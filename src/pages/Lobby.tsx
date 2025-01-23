@@ -1,18 +1,79 @@
-import React, { useState } from 'react';
+import React, {useEffect, useState} from 'react';
 import { useNavigate } from 'react-router-dom';
+import axios from 'axios';
 
 export default function Lobby() {
     const [playerName, setPlayerName] = useState('');
     const [gameId, setGameId] = useState('');
+    const [categories, setCategories] = useState(['', '', '', '', '']); // Initial empty categories
     const navigate = useNavigate();
+    const randomCategoryList = [
+        'Science',
+        'History',
+        'Technology',
+        'Music',
+        'Sports',
+        'Movies',
+        'Literature',
+        'Geography',
+        'Mathematics',
+        'Art',
+        'Animals',
+        'Anime',
+        'Video Games',
+        'Books',
+        'Comics',
+        'Food',
+        'Music',
+        'Philosophy',
+    ];
 
-    const handleCreateGame = () => {
+    useEffect(() => {
+        handleGenerateRandomCategories();
+    }, []);
+
+    // Function to generate 5 random categories
+    const handleGenerateRandomCategories = () => {
+        const shuffledCategories = randomCategoryList.sort(() => 0.5 - Math.random());
+        const randomCategories = shuffledCategories.slice(0, 5); // Choose 5 random categories
+        setCategories(randomCategories);
+    };
+
+
+    const handleCreateGame = async () => {
         if (!playerName.trim()) {
             alert('Please enter your name.');
             return;
         }
+
+        // Check if all categories are filled
+        if (categories.some((category) => !category.trim())) {
+            alert('Please fill in all 5 categories.');
+            return;
+        }
+
         const newGameId = Math.random().toString(36).substr(2, 8).toUpperCase();
-        navigate(`/game/${newGameId}`, { state: { playerName: playerName.trim(), isHost: true } });
+
+        try {
+            // Generate the board via API using the provided categories
+            const response = await axios.post('http://localhost:3000/generate-board', {categories});
+
+            console.log('Generated board data:', response.data.boardData);
+
+            const generatedBoardData = response.data.boardData;
+
+            // Navigate to the game with the generated board data
+            navigate(`/game/${newGameId}`, {
+                state: {
+                    playerName: playerName.trim(),
+                    isHost: true,
+                    boardData: generatedBoardData,
+                },
+            });
+        } catch (error) {
+            console.error('Failed to generate board data:', error);
+            alert('Failed to generate board data. Please try again.');
+        }
 
     };
 
@@ -38,6 +99,29 @@ export default function Lobby() {
                         style={{ marginLeft: '10px', padding: '5px' }}
                     />
                 </label>
+            </div>
+            <div style={{ marginTop: '20px' }}>
+                <h3>Enter 5 Categories:</h3>
+                {categories.map((category, index) => (
+                    <div key={index}>
+                        <label>
+                            Category {index + 1}:
+                            <input
+                                type="text"
+                                value={category}
+                                onChange={(e) =>
+                                    setCategories((prev) => {
+                                        const newCategories = [...prev];
+                                        newCategories[index] = e.target.value;
+                                        return newCategories;
+                                    })
+                                }
+                                placeholder={`Category ${index + 1}`}
+                                style={{ marginLeft: '10px', padding: '5px' }}
+                            />
+                        </label>
+                    </div>
+                ))}
             </div>
             <div style={{ marginBottom: '20px' }}>
                 <button

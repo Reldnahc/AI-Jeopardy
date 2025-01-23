@@ -27,6 +27,7 @@ const JeopardyBoard: React.FC<JeopardyBoardProps> = ({ boardData, isHost, onClue
     const [showClue, setShowClue] = useState(false);
     const [showAnswer, setShowAnswer] = useState(false);
 
+
     useEffect(() => {
         if (selectedClue) {
             setLocalSelectedClue(selectedClue);
@@ -93,7 +94,9 @@ const JeopardyBoard: React.FC<JeopardyBoardProps> = ({ boardData, isHost, onClue
             }
         }
     };
-
+    if (!boardData || boardData.length === 0) {
+        return <p>No board data available.</p>; // Fallback if boardData is invalid
+    }
     return (
         <div
             style={{
