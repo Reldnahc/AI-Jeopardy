@@ -1,11 +1,5 @@
 import React, { useEffect, useState } from 'react';
-
-interface Clue {
-    showAnswer: boolean;
-    value: number;
-    question: string;
-    answer: string;
-}
+import {Clue} from "../types.ts";
 
 interface Category {
     category: string;

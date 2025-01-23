@@ -11,59 +11,67 @@ app.use(cors());
 app.use(express.json());
 
 app.post('/generate-board', async (req, res) => {
-    const { categories } = req.body; // Accept categories from request payload
-    const { difficulty } = "difficult"; // Accept categories from request payload
+    const { categories } = req.body; // Receive 10 categories
+    const difficulty = "difficult";
 
-    if (!categories || categories.length !== 5) {
-        return res.status(400).json({ error: 'You must provide exactly 5 categories.' });
+    if (!categories || categories.length !== 10) {
+        return res.status(400).json({ error: 'You must provide exactly 10 categories.' });
     }
 
-    const prompt = `
-         Create a Jeopardy board with the following 5 categories: ${categories.join(', ')}.
-         Each category should contain 5 questions, each with a value and an answer. Make sure they follow the jeopardy format.
-         The Questions should be a ${difficulty} difficulty. The Questions should avoid having the answer in the either clue or in the category title.
-         The answers should be in the format of a question, and the questions a statement. The lower value the more mainstream the information should be. 
-         If its a high value question it should be more niche or difficult.
-         Using true JSON format the response as:
-         [
-             {
-                 "category": "Category Name",
-                 "values": [
-                     { "value": 100, "question": "Sample Question?", "answer": "Sample Answer" },
-                     // Include more values...
-                 ]
-             },
-             // Include more categories...
-         ]
-         `;
+    const [firstCategories, secondCategories] = [categories.slice(0, 5), categories.slice(5)];
+
+    const prompt = (categories, double = false) => `
+        Create a Jeopardy board with the following 5 categories: ${categories.join(', ')}.
+        Each category should contain 5 questions, each with a value and an answer. Make sure they follow the jeopardy format.
+        The questions should be more difficult according to their value. 
+        The Questions should be a ${difficulty} difficulty. The Questions should avoid having the answer in the clue or category title.
+        ${double ? 'Make this a Double Jeopardy board, ensuring values are doubled, ranging from 200 to 1000 instead of 100 to 500.' : ''}
+        Format the response in JSON as:
+        [
+            {
+                "category": "Category Name",
+                "values": [
+                    { "value": 100, "question": "Question?", "answer": "Answer" },
+                    // More values...
+                ]
+            },
+            // More categories...
+        ]
+    `;
 
     try {
-        console.log("[Server] Attempting to make request to OpenAI API");
-        console.log("[Server] prompt: " + prompt);
-        const response = await openai.chat.completions.create({
+        const firstBoardPromise = openai.chat.completions.create({
             model: "gpt-4o",
-            messages: [
-                { role: "system", content: prompt },
-            ],
+            messages: [{ role: "system", content: prompt(firstCategories) }],
             store: true,
         });
-        console.log(response.choices[0].message.content.replace(/```(?:json)?/g, '').trim());
-        const boardData = JSON.parse(response.choices[0].message.content.replace(/```(?:json)?/g, '').trim());
 
-        res.status(200).json({ boardData });
+        const secondBoardPromise = openai.chat.completions.create({
+            model: "gpt-4o",
+            messages: [{ role: "system", content: prompt(secondCategories, true) }],
+            store: true,
+        });
+
+        // Generate both boards
+        const [firstResponse, secondResponse] = await Promise.all([firstBoardPromise, secondBoardPromise]);
+
+        const firstBoard = JSON.parse(firstResponse.choices[0].message.content.replace(/```(?:json)?/g, "").trim());
+        const secondBoard = JSON.parse(secondResponse.choices[0].message.content.replace(/```(?:json)?/g, "").trim());
+
+        res.status(200).json({ boardData: { firstBoard, secondBoard } });
     } catch (error) {
         console.error('[Server] Error generating board data:', error.message);
-        res.status(500).json({ error: 'Failed to generate board data.' });
+        res.status(500).json({ error: 'Failed to generate board data. Please try again later.' });
     }
 });
 
 const HTTP_PORT = 3000; // Port for HTTP requests
 app.listen(HTTP_PORT, () => console.log(`HTTP server running on http://localhost:${HTTP_PORT}`));
 
-const PORT = 3001;
-const wss = new WebSocketServer({ port: PORT });
+const WS_PORT = 3001;
+const wss = new WebSocketServer({ port: WS_PORT, });
 
-console.log(`WebSocket server running on ws://localhost:${PORT}`);
+console.log(`WebSocket server running on ws://localhost:${WS_PORT}`);
 
 // Store game state
 const games = {};
@@ -74,6 +82,12 @@ wss.on('connection', (ws) => {
 
     ws.on('message', (message) => {
         const data = JSON.parse(message);
+
+        if (data.type === 'create-game' || data.type === 'join-game') {
+            // Assign the game ID to the WebSocket instance
+            ws.gameId = data.gameId;
+        }
+
 
         if (data.type === 'create-game') {
             const { gameId, playerName, boardData} = data;
@@ -279,9 +293,20 @@ wss.on('connection', (ws) => {
                 broadcast(gameId, { type: 'buzzer-locked' }); // Notify all players
             }
         }
+
+        if (data.type === 'transition-to-second-board') {
+            const { gameId } = data;
+
+            if (games[gameId]) {
+                broadcast(gameId, { type: 'transition-to-second-board' });
+            } else {
+                console.error(`[Server] Game ID ${gameId} not found for board transition.`);
+            }
+        }
     });
 
     ws.on('close', () => {
+        console.log(`WebSocket closed for game ${ws.gameId}`);
         // Remove the player when they disconnect
         Object.keys(games).forEach((gameId) => {
             games[gameId].players = games[gameId].players.filter((p) => p.id !== ws.id);
