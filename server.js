@@ -12,7 +12,7 @@ app.use(express.json());
 
 app.post('/generate-board', async (req, res) => {
     const { categories } = req.body; // Accept categories from request payload
-    const { difficulty } = "medium"; // Accept categories from request payload
+    const { difficulty } = "difficult"; // Accept categories from request payload
 
     if (!categories || categories.length !== 5) {
         return res.status(400).json({ error: 'You must provide exactly 5 categories.' });
@@ -41,7 +41,7 @@ app.post('/generate-board', async (req, res) => {
         console.log("[Server] Attempting to make request to OpenAI API");
         console.log("[Server] prompt: " + prompt);
         const response = await openai.chat.completions.create({
-            model: "gpt-4o-mini",
+            model: "gpt-4o",
             messages: [
                 { role: "system", content: prompt },
             ],
