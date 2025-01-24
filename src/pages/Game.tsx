@@ -169,10 +169,10 @@ export default function Game() {
 
     }, [clearedClues, gameId]); // Run only when clearedClues or gameId changes
 
-    const updateClearedClues = (newClearedClues) => {
+    const updateClearedClues = (newClearedClues: string[]) => {
         setClearedClues((prev) => {
             const updatedClues = new Set(prev);
-            newClearedClues.forEach((clue) => updatedClues.add(clue));
+            newClearedClues.forEach((clue: string) => updatedClues.add(clue));
             return updatedClues;
         });
     };
@@ -203,70 +203,125 @@ export default function Game() {
     }
 
     return (
-        <div style={{ padding: '20px', fontFamily: 'Arial, sans-serif' }}>
-            <p>
-                <strong>Game ID:</strong> {gameId}
-            </p>
-            <p>
-                <strong>Host:</strong> {isHost ? 'You' : host || 'Unknown'}
-            </p>
-            <h2>Players:</h2>
-            <ul>
-                {players.map((player, index) => (
-                    <li key={index}>{player}</li>
-                ))}
-            </ul>
-            <JeopardyBoard
-                boardData={boardData[activeBoard]}
-                isHost={isHost}
-                onClueSelected={onClueSelected}
-                selectedClue={selectedClue || null}
-                gameId={gameId || ''}
-                clearedClues={clearedClues}
-                socketRef={socketRef}
-            />
-            {/** Buzzer controls for the host */}
-            {isHost && selectedClue && (
-                <div style={{ marginTop: '20px' }}>
-                    <button
-                        onClick={() => {
-                            socketRef.current?.send(JSON.stringify({ type: 'unlock-buzzer', gameId }));
-                            setBuzzerLocked(false); // Optimistic UI update for the host
-                        }}
-                        style={{
-                            padding: '10px 20px',
-                            marginRight: '10px',
-                            backgroundColor: buzzerLocked ? 'green' : 'gray',
-                            color: 'white',
-                            border: 'none',
-                            borderRadius: '5px',
-                            cursor: buzzerLocked ? 'pointer' : 'not-allowed',
-                        }}
-                        disabled={!buzzerLocked} // Disable the button if the buzzer is already unlocked
-                    >
-                        Unlock Buzzer
-                    </button>
+        <div
+            style={{
+                display: 'flex', // Flex layout for sidebar and Jeopardy board
+                height: '100vh', // Full viewport height
+                width: '100vw', // Full viewport width
+                overflow: 'hidden', // No scrolling allowed
+                fontFamily: 'Arial, sans-serif',
+            }}
+        >
+            {/* Sidebar Section */}
+            <div
+                style={{
+                    flex: '0 0 300px', // Fixed width for sidebar
+                    display: 'flex',
+                    flexDirection: 'column',
+                    alignItems: 'flex-start', // Align items to the left
+                    gap: '20px', // Space between elements
+                    padding: '20px', // Internal spacing for the sidebar
+                    overflow: 'hidden', // Prevent scrolling inside sidebar
+                    boxSizing: 'border-box', // Ensure padding doesn't expand the width
+                    position: 'relative',
+                }}
+            >
+                <div>
+                    <p><strong>Game ID:</strong> {gameId}</p>
+                    <p><strong>Host:</strong> {isHost ? 'You' : host || 'Unknown'}</p>
                 </div>
-            )}
-            {/** Player buzzer button */}
-            {!isHost && (
-                <button
-                    onClick={handleBuzz}
-                    disabled={isBuzzed || buzzerLocked}
+                <div>
+                    <h2>Players:</h2>
+                    <ul style={{ paddingLeft: '20px', margin: '0' }}>
+                        {players.map((player, index) => (
+                            <li key={index}>{player}</li>
+                        ))}
+                    </ul>
+                </div>
+                {/* Fixed Bottom-Left Button Container */}
+                <div
                     style={{
-                        padding: '10px 20px',
-                        marginTop: '20px',
-                        backgroundColor: isBuzzed || buzzerLocked ? 'gray' : 'blue',
-                        color: 'white',
-                        border: 'none',
-                        borderRadius: '5px',
-                        cursor: isBuzzed || buzzerLocked ? 'not-allowed' : 'pointer',
+                        position: 'fixed', // Fixed position on the viewport
+                        bottom: '0px', // 20px from the bottom
+                        left: '20px', // 20px from the left edge
+                        width: '260px', // Match the inner width of the sidebar (300px - padding)
+                        display: 'flex', // Flexbox for positioning
+                        flexDirection: 'column', // Stack buttons vertically
+                        alignItems: 'center', // Center buttons horizontally in container
+                        gap: '20px', // Increased spacing between buttons
+                        zIndex: 100, // Ensure buttons are above other content
                     }}
                 >
-                    Buzz!
-                </button>
-            )}
-            {buzzResult && <p style={{ color: 'green', marginTop: '20px' }}>{buzzResult}</p>}
+                    {/* Host Controls */}
+                    {isHost && selectedClue && (
+                        <button
+                            onClick={() => {
+                                socketRef.current?.send(JSON.stringify({ type: 'unlock-buzzer', gameId }));
+                                setBuzzerLocked(false);
+                            }}
+                            style={{
+                                padding: '30px 50px', // Larger size for padding
+                                backgroundColor: buzzerLocked ? 'green' : 'gray',
+                                color: 'white',
+                                fontSize: '24px', // Larger font size
+                                fontWeight: 'bold', // Make text bold for clarity
+                                border: 'none',
+                                cursor: buzzerLocked ? 'pointer' : 'not-allowed',
+                                minWidth: '300px', // Ensure a minimum button width
+                            }}
+                            disabled={!buzzerLocked}
+                        >
+                            Unlock Buzzer
+                        </button>
+                    )}
+
+                    {/* Player Buzzer */}
+                    {!isHost && (
+                        <button
+                            onClick={handleBuzz}
+                            disabled={isBuzzed || buzzerLocked}
+                            style={{
+                                padding: '40px 60px', // Larger padding for a more prominent button
+                                backgroundColor: isBuzzed || buzzerLocked ? 'gray' : 'blue',
+                                color: 'white',
+                                fontSize: '30px', // Extra-large font size for better visibility
+                                fontWeight: 'bold', // Bold text for emphasis
+                                border: 'none',
+                                cursor: isBuzzed || buzzerLocked ? 'not-allowed' : 'pointer',
+                                minWidth: '300px', // Wide buttons for a consistent, bold appearance
+                            }}
+                        >
+                            Buzz!
+                        </button>
+                    )}
+                </div>
+
+                {buzzResult && <p style={{ color: 'green' }}>{buzzResult}</p>}
+            </div>
+
+            {/* Jeopardy Board Section */}
+            <div
+                style={{
+                    flex: 1, // Take up the remaining space
+                    display: 'flex',
+                    justifyContent: 'center',
+                    alignItems: 'center',
+                    overflow: 'hidden', // Prevent scrolling issues for board
+                    padding: '0px', // Add some space around the board
+                }}
+            >
+                <JeopardyBoard
+                    boardData={boardData[activeBoard]}
+                    isHost={isHost}
+                    onClueSelected={onClueSelected}
+                    selectedClue={selectedClue || null}
+                    gameId={gameId || ''}
+                    clearedClues={clearedClues}
+                    socketRef={socketRef}
+                    players={players}
+                />
+            </div>
         </div>
     );
+
 }

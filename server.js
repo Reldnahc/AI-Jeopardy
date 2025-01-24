@@ -23,15 +23,16 @@ app.post('/generate-board', async (req, res) => {
     const prompt = (categories, double = false) => `
         Create a Jeopardy board with the following 5 categories: ${categories.join(', ')}.
         Each category should contain 5 questions, each with a value and an answer. Make sure they follow the jeopardy format.
-        The questions should be more difficult according to their value. 
-        The Questions should be a ${difficulty} difficulty. The Questions should avoid having the answer in the clue or category title.
-        ${double ? 'Make this a Double Jeopardy board, ensuring values are doubled, ranging from 200 to 1000 instead of 100 to 500.' : ''}
+        Each answer should be formated in question like jeopardy. The questions should be more difficult according to their value. 
+        The Questions should avoid having the answer in the clue or category title. 
+        ${double ? 'Make this a Double Jeopardy board, ensuring values are doubled, ranging from 400 to 2000 instead of 200 to 1000. ' +
+        'they should be more difficult according to their value. questions over 500 points should be hard.' : ''}
         Format the response in JSON as:
         [
             {
                 "category": "Category Name",
                 "values": [
-                    { "value": 100, "question": "Question?", "answer": "Answer" },
+                    { "value": 200, "question": "Question", "answer": "Answer?" },
                     // More values...
                 ]
             },
@@ -319,11 +320,11 @@ wss.on('connection', (ws) => {
     });
 });
 
-// Broadcast a message to all clients in a game
+// Broadcast a message to all clients in a specific game
 function broadcast(gameId, message) {
     wss.clients.forEach((client) => {
-        if (client.readyState === WebSocket.OPEN) {
-            client.send(JSON.stringify({ gameId, ...message }));
+        if (client.readyState === WebSocket.OPEN && client.gameId === gameId) { // Match client by gameId
+            client.send(JSON.stringify({ ...message }));
         }
     });
 }

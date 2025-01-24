@@ -1,8 +1,19 @@
+/* Fix layout and scrolling issues */
+html, body, #root {
+  margin: 0; /* Remove extra spacing */
+  padding: 0; /* Remove extra spacing */
+  width: 100%; /* Ensure full-page width */
+  height: 100%; /* Ensure full-page height */
+  overflow: hidden; /* Disable scrolling */
+  box-sizing: border-box; /* Include padding/borders in width/height */
+}
+
+/* Optional: Center #root vertically and horizontally */
 #root {
-  max-width: 1280px;
-  margin: 0 auto;
-  padding: 2rem;
-  text-align: center;
+  display: flex;
+  justify-content: center;
+  align-items: flex-start;
+
 }
 
 .logo {
@@ -26,7 +37,23 @@
     transform: rotate(360deg);
   }
 }
+.spinner {
+  width: 50px;
+  height: 50px;
+  border: 5px solid #fff;
+  border-top: 5px solid #6495ED;
+  border-radius: 50%;
+  animation: spin 1s linear infinite;
+}
 
+@keyframes spin {
+  0% {
+    transform: rotate(0deg);
+  }
+  100% {
+    transform: rotate(360deg);
+  }
+}
 @media (prefers-reduced-motion: no-preference) {
   a:nth-of-type(2) .logo {
     animation: logo-spin infinite 20s linear;
