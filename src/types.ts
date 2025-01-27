@@ -1,7 +1,20 @@
-// src/types.ts
-export type Clue = {
-    value?: number;
-    question?: string;
-    answer?: string;
-    showAnswer?: boolean; // Optional if not all clues will have this property
-};
+/** Represents a single clue/question on the board */
+export interface Clue {
+    value?: number; // The monetary value of the clue/question
+    question: string; // The clue/question text
+    answer: string; // The answer text
+    showAnswer?: boolean; // Indicates whether the answer has been revealed
+}
+
+/** Represents a single category with its title and associated clues/questions */
+export interface Category {
+    category: string; // Title of the category (e.g., "Science")
+    values: Clue[];   // Array of clues/questions within the category
+}
+
+/** Represents the board structure sent to clients */
+export interface BoardData {
+    firstBoard: Category[]; // Jeopardy first round categories/questions
+    secondBoard: Category[]; // Double Jeopardy categories/questions
+    finalJeopardy: Category[];
+}

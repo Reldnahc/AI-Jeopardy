@@ -13,13 +13,13 @@ app.use(express.json());
 app.post('/generate-board', async (req, res) => {
     const { categories } = req.body; // Receive 10 categories
     const difficulty = "difficult";
-
-    if (!categories || categories.length !== 10) {
-        return res.status(400).json({ error: 'You must provide exactly 10 categories.' });
+    console.log(categories);
+    if (!categories || categories.length !== 11) {
+        return res.status(400).json({ error: 'You must provide exactly 11 categories.' });
     }
 
-    const [firstCategories, secondCategories] = [categories.slice(0, 5), categories.slice(5)];
-
+    const [firstCategories, secondCategories, finalCategory] = [categories.slice(0, 5), categories.slice(5,10), categories[10]];
+    console.log(finalCategory);
     const prompt = (categories, double = false) => `
         Create a Jeopardy board with the following 5 categories: ${categories.join(', ')}.
         Each category should contain 5 questions, each with a value and an answer. Make sure they follow the jeopardy format.
@@ -40,26 +40,47 @@ app.post('/generate-board', async (req, res) => {
         ]
     `;
 
+    const finalPrompt = (category) => `
+         Generate me Json for a very difficult question in this category ${category}.
+         It should be a very difficult question. Make sure it follows the jeopardy format.
+         The answer should be formated in question like jeopardy.
+         Format the response in JSON as:
+         [
+            {
+                "category": "Category Name",
+                "values": [
+                    { "question": "Question", "answer": "Answer?" },
+                ]
+            },
+        ]
+   `;
+    //const model = "o1-mini";
+    const model = "gpt-4o-mini";
     try {
         const firstBoardPromise = openai.chat.completions.create({
-            model: "gpt-4o",
-            messages: [{ role: "system", content: prompt(firstCategories) }],
+            model: model,
+            messages: [{ role: "user", content: prompt(firstCategories) }],
             store: true,
         });
-
         const secondBoardPromise = openai.chat.completions.create({
-            model: "gpt-4o",
-            messages: [{ role: "system", content: prompt(secondCategories, true) }],
+            model: model,
+            messages: [{ role: "user", content: prompt(secondCategories, true) }],
+            store: true,
+        });
+        const finalBoardPromise = openai.chat.completions.create({
+            model: model,
+            messages: [{ role: "user", content: finalPrompt(finalCategory) }],
             store: true,
         });
 
         // Generate both boards
-        const [firstResponse, secondResponse] = await Promise.all([firstBoardPromise, secondBoardPromise]);
+        const [firstResponse, secondResponse, finalResponse] = await Promise.all([firstBoardPromise, secondBoardPromise, finalBoardPromise]);
 
         const firstBoard = JSON.parse(firstResponse.choices[0].message.content.replace(/```(?:json)?/g, "").trim());
         const secondBoard = JSON.parse(secondResponse.choices[0].message.content.replace(/```(?:json)?/g, "").trim());
+        const finalJeopardy = JSON.parse(finalResponse.choices[0].message.content.replace(/```(?:json)?/g, "").trim());
 
-        res.status(200).json({ boardData: { firstBoard, secondBoard } });
+        res.status(200).json({ boardData: { firstBoard, secondBoard, finalJeopardy } });
     } catch (error) {
         console.error('[Server] Error generating board data:', error.message);
         res.status(500).json({ error: 'Failed to generate board data. Please try again later.' });
@@ -106,6 +127,9 @@ wss.on('connection', (ws) => {
                     buzzResult: games[gameId].buzzed, // Current buzz result, if any
                     clearedClues: Array.from(games[gameId].clearedClues || new Set()), // Send cleared clues
                     boardData: boardData,
+                    selectedClue: games[gameId].selectedClue || null, // Add the current selected clue
+                    buzzerLocked: games[gameId].buzzerLocked,
+                    scores: games[gameId].scores,
                 }));
 
                 broadcast(gameId, {
@@ -118,6 +142,7 @@ wss.on('connection', (ws) => {
                 games[gameId] = {
                     host: playerName,
                     players: [],
+                    scores: {},
                     buzzed: null,
                     buzzerLocked: true,
                     clearedClues: new Set(),
@@ -160,7 +185,7 @@ wss.on('connection', (ws) => {
 
             // Log the updated player list for debugging
             console.log(`Players in game ${gameId}:`, games[gameId].players);
-            // Notify the new player of the current game state (buzz result and buzzer status)
+            // Notify the new player of the current game state (buzz result, buzzer status, board, and selected clue if any)
             ws.send(JSON.stringify({
                 type: 'game-state',
                 gameId,
@@ -169,6 +194,9 @@ wss.on('connection', (ws) => {
                 buzzResult: games[gameId].buzzed,
                 clearedClues: Array.from(games[gameId].clearedClues || new Set()),
                 boardData: games[gameId].boardData,
+                selectedClue: games[gameId].selectedClue || null, // Add currently selected clue if any
+                buzzerLocked: games[gameId].buzzerLocked,         // Send buzzer state
+                scores: games[gameId].scores,
             }));
 
             // Notify all players
@@ -198,49 +226,100 @@ wss.on('connection', (ws) => {
 
             if (games[gameId]) {
                 games[gameId].buzzed = null;
+                games[gameId].buzzerLocked = true;
 
                 // Notify all players to reset the buzzer
                 broadcast(gameId, { type: 'reset-buzzer' });
             }
         }
 
+        if (data.type === 'mark-all-complete') {
+            const { gameId } = data;
+
+            if (games[gameId]) {
+                const game = games[gameId];
+
+                // Determine all clues based on boardData
+                if (game.boardData) {
+                    const { firstBoard, secondBoard, finalJeopardy } = game.boardData;
+
+                    const clearCluesFromBoard = (board) => {
+                        board.forEach(category => {
+                            category.values.forEach(clue => {
+                                const clueId = `${clue.value}-${clue.question}`;
+                                game.clearedClues.add(clueId); // Add all clues to "clearedClues" set
+                            });
+                        });
+                    };
+
+                    // Clear clues for the two main boards
+                    if (firstBoard) clearCluesFromBoard(firstBoard);
+                    if (secondBoard) clearCluesFromBoard(secondBoard);
+
+                    // Handle Final Jeopardy clue
+                    if (finalJeopardy && finalJeopardy.values && finalJeopardy.values[0]) {
+                        const finalClueId = `${finalJeopardy.values[0].question}`;
+                        game.clearedClues.add(finalClueId);
+                    }
+
+                    // Broadcast the updated cleared clues to all clients
+                    broadcast(gameId, {
+                        type: 'all-clues-cleared',
+                        clearedClues: Array.from(game.clearedClues), // Send the cleared clues as an array
+                    });
+                }
+            } else {
+                console.error(`[Server] Game ID ${gameId} not found when marking all clues complete.`);
+            }
+        }
+        if (data.type === 'trigger-game-over') {
+            const { gameId } = data;
+
+            broadcast(gameId, {
+                type: 'game-over',
+            });
+        }
         if (data.type === 'clue-selected') {
             const { gameId, clue } = data;
 
             if (games[gameId]) {
                 const clueId = `${clue.value}-${clue.question}`;
-                games[gameId].clearedClues.add(clueId); // Add the clue to the cleared set
+                games[gameId].selectedClue = {
+                    ...clue,
+                    isAnswerRevealed: false, // Add if the answer is revealed or not
+                };
 
-                // Reset buzzer state when a new clue is selected
+                // Reset buzzer state
                 games[gameId].buzzed = null;
                 games[gameId].buzzerLocked = true;
 
                 // Broadcast the selected clue to all players in the game
                 broadcast(gameId, {
                     type: 'clue-selected',
-                    clue,
-                    clearedClues: Array.from(games[gameId].clearedClues), // Convert to an array for JSON compatibility
+                    clue: games[gameId].selectedClue, // Send the clue and answer reveal status
+                    clearedClues: Array.from(games[gameId].clearedClues),
                 });
 
-                // Notify players to reset the buzzer and lock it by default
                 broadcast(gameId, { type: 'reset-buzzer' });
                 broadcast(gameId, { type: 'buzzer-locked' });
-
             } else {
                 console.error(`[Server] Game ID ${gameId} not found when selecting clue.`);
             }
         }
 
         if (data.type === 'reveal-answer') {
-            const { gameId, playerName } = data;
+            const { gameId } = data;
 
-            if (games[gameId]) {
+            if (games[gameId] && games[gameId].selectedClue) {
+                // Update the clue's state to mark the answer as revealed
+                games[gameId].selectedClue.isAnswerRevealed = true;
+
                 // Notify all players to display the answer
                 broadcast(gameId, {
                     type: 'answer-revealed',
                 });
             } else {
-                console.error(`[Server] Game ID ${gameId} not found when revealing answer.`);
+                console.error(`[Server] Game ID ${gameId} not found or no clue selected when revealing answer.`);
             }
         }
 
@@ -248,6 +327,7 @@ wss.on('connection', (ws) => {
             const { gameId } = data;
 
             if (games[gameId]) {
+                games[gameId].selectedClue = null; // Clear the selected clue
                 // Notify all clients to return to the board
                 broadcast(gameId, {
                     type: 'returned-to-board',
@@ -302,6 +382,105 @@ wss.on('connection', (ws) => {
                 broadcast(gameId, { type: 'transition-to-second-board' });
             } else {
                 console.error(`[Server] Game ID ${gameId} not found for board transition.`);
+            }
+        }
+
+        if (data.type === 'update-score') {
+            const { gameId, player, delta } = data;
+
+            if (games[gameId]) {
+                // Update score
+                const game = games[gameId];
+                game.scores[player] = (game.scores[player] || 0) + delta;
+
+                // Broadcast updated scores
+                broadcast(gameId, {
+                    type: 'update-scores',
+                    scores: game.scores,
+                });
+            }
+        }
+
+        if (data.type === "submit-wager") {
+            const { gameId, player, wager } = data;
+
+            if (games[gameId]) {
+                if (!games[gameId].wagers) {
+                    games[gameId].wagers = {};
+                }
+                games[gameId].wagers[player] = wager;
+
+                broadcast(gameId, {
+                    type: "wager-update",
+                    player,
+                    wager,
+                });
+
+                // Check if all wagers are submitted
+                const allSubmitted =
+                    (games[gameId].players.length > 0 &&
+                        Object.keys(games[gameId].wagers).length ===
+                        games[gameId].players.length) ||
+                    (games[gameId].players.length === 0 &&
+                        Object.keys(games[gameId].wagers).includes("host"));
+
+                if (allSubmitted) {
+                    broadcast(gameId, { type: "all-wagers-submitted", wagers: games[gameId].wagers });
+                }
+            }
+        }
+
+        if (data.type === 'transition-to-final-jeopardy') {
+            const { gameId } = data;
+
+            if (games[gameId]) {
+                broadcast(gameId, { type: 'final-jeopardy' });
+            } else {
+                console.error(`[Server] Game ID ${gameId} not found for board transition.`);
+            }
+        }
+
+        if (data.type === 'final-jeopardy-drawing') {
+            const { gameId, player, drawing } = data;
+
+            if (games[gameId]) {
+                // Initialize the drawings object if not present
+                if (!games[gameId].drawings) {
+                    games[gameId].drawings = {};
+                }
+
+                // Parse the drawing if it’s a string
+                let parsedDrawing;
+                try {
+                    parsedDrawing = typeof drawing === 'string' ? JSON.parse(drawing) : drawing;
+                } catch (error) {
+                    console.error(`[Server] Failed to parse drawing for player ${player}:`, error.message);
+                    return; // Exit early if the drawing can't be parsed
+                }
+
+                // Store the player's drawing as an object
+                games[gameId].drawings[player] = parsedDrawing;
+
+
+                // Broadcast that the player's drawing is submitted
+                broadcast(gameId, {
+                    type: 'final-jeopardy-drawing-submitted',
+                    player,
+                });
+
+                // Check if all players have submitted their drawings
+                const allPlayersSubmitted =
+                    Object.keys(games[gameId].drawings).length === games[gameId].players.length ||
+                    (games[gameId].players.length === 0 && games[gameId].drawings["host"]);
+
+                if (allPlayersSubmitted) {
+                    broadcast(gameId, {
+                        type: 'all-final-jeopardy-drawings-submitted',
+                        drawings: games[gameId].drawings,
+                    });
+                }
+            } else {
+                console.error(`[Server] Game ID ${gameId} not found when submitting final jeopardy drawing.`);
             }
         }
     });

@@ -1,10 +1,9 @@
-import React, { useEffect, useState } from 'react';
-import {Clue} from "../types.ts";
-
-interface Category {
-    category: string;
-    values: Clue[];
-}
+import React, { useEffect, useRef, useState} from 'react';
+import {Category, Clue} from "../types.ts";
+import JeopardyGrid from "./JeopardyGrid"; // Import the grid component
+import WagerInput from "./WagerInput"; // Import the wager input component
+import { DrawingPath} from "../utils/drawingUtils.tsx";
+import SelectedClueDisplay from "./SelectedClueDisplay.tsx"; // Import the selected clue component
 
 interface JeopardyBoardProps {
     boardData: Category[];
@@ -15,13 +14,39 @@ interface JeopardyBoardProps {
     socketRef: React.MutableRefObject<WebSocket | null>;
     clearedClues: Set<string>; // Add clearedClues
     players: string[];         // Prop to track players in the game
+    scores: Record<string, number>; // Player scores
+    currentPlayer: string; // New prop for the current player
+    allWagersSubmitted: boolean;
+    isFinalJeopardy: boolean;
+    drawings: Record<string, DrawingPath[]> | null;
 }
 
-const JeopardyBoard: React.FC<JeopardyBoardProps> = ({ boardData, isHost, onClueSelected, selectedClue, gameId, socketRef, clearedClues, players}) => {
+const JeopardyBoard: React.FC<JeopardyBoardProps> =
+    ({ boardData, isHost, onClueSelected, selectedClue, gameId, socketRef, clearedClues, players, scores,
+         currentPlayer, allWagersSubmitted, isFinalJeopardy, drawings}) => {
     const [localSelectedClue, setLocalSelectedClue] = useState<Clue | null>(null);
     const [showClue, setShowClue] = useState(false);
     const [showAnswer, setShowAnswer] = useState(false);
     const [hostCanSeeAnswer, setHostCanSeeAnswer] = useState(false);
+    const [wagers, setWagers] = useState<Record<string, number>>({});
+    const [wagerSubmitted, setWagerSubmitted] = useState<string[]>([]);
+    const [drawingSubmitted, setDrawingSubmitted] = useState<Record<string, boolean>>({});
+    // @ts-expect-error works better this way
+    const canvasRef = useRef< ReactSketchCanvas>(null);
+    const canvas_with_mask = document.querySelector("#react-sketch-canvas__stroke-group-0");
+    if (canvas_with_mask)
+        canvas_with_mask.removeAttribute("mask");
+
+    // Automatically submit $0 wager upfront if the player has $0 or less
+    useEffect(() => {
+        if (isHost)
+            return;
+        console.log(isFinalJeopardy);
+        console.log(scores[currentPlayer]);
+        if (isFinalJeopardy && (scores[currentPlayer] <= 0 || !scores[currentPlayer]) && !wagerSubmitted.includes(currentPlayer)) {
+            submitWager(currentPlayer);
+        }
+    }, [currentPlayer, scores, wagerSubmitted, isFinalJeopardy]);
 
     useEffect(() => {
         if (selectedClue) {
@@ -49,9 +74,39 @@ const JeopardyBoard: React.FC<JeopardyBoardProps> = ({ boardData, isHost, onClue
         }
     };
 
+    const handleWagerChange = (player: string, wager: number) => {
+        setWagers((prev) => ({ ...prev, [player]: wager }));
+    };
+
+    const submitWager = (player: string) => {
+        if (wagers[player] === undefined) {
+            wagers[player] = 0;
+        }
+        if (wagers[player] !== undefined && wagers[player] <= (scores[player] || 0)) {
+            setWagerSubmitted((prev) => [...prev, player]);
+
+            // Notify the server that the wager is submitted
+            const socket = socketRef.current;
+            if (socket) {
+                socket.send(
+                    JSON.stringify({
+                        type: "submit-wager",
+                        gameId,
+                        player,
+                        wager: wagers[player],
+                    })
+                );
+            }
+        } else {
+            alert("Wager cannot exceed current score!");
+        }
+    };
+
+
     if (!boardData || boardData.length === 0) {
-        return <p>No board data available.</p>; // Fallback if boardData is invalid
+        return <p>No board data available.</p>; // Handle invalid board data
     }
+
     return (
         <div
             style={{
@@ -59,199 +114,70 @@ const JeopardyBoard: React.FC<JeopardyBoardProps> = ({ boardData, isHost, onClue
                 width: '100%',
                 height: '100%', // Fill vertically
                 margin: '0', // Remove margins
-                backgroundColor: '#fff',
                 overflow: 'hidden',
             }}
 
         >
-            {/* Jeopardy Board */}
-            {!showClue && (
+
+            {isFinalJeopardy && !allWagersSubmitted && (
                 <div
                     style={{
-                        display: 'grid',
-                        gridTemplateColumns: `repeat(${boardData.length}, 1fr)`, // One column for each category
-                        gridTemplateRows: `60px repeat(5, 1fr)`, // 1 fixed row for categories, 5 flexible rows for clues
-                        gap: '10px',
-                        width: '98%',
-                        height: '98%',
+                        display: "flex",
+                        flexDirection: "column",
+                        alignItems: "center",
+                        justifyContent: "center",
+                        width: "100%",
+                        height: "100%",
+                        backgroundColor: "#222",
+                        color: "#fff",
                     }}
                 >
-                    {/* Render Category Headers (First Row Only) */}
-                    {boardData.map((category, colIndex) => (
-                        <div
-                            key={colIndex}
-                            style={{
-                                display: 'flex',
-                                marginTop: '10px',
-                                justifyContent: 'center',
-                                alignItems: 'center',
-                                border: '2px solid #000',
-                                backgroundColor: '#FFA500',
-                                fontWeight: 'bold',
-                                textAlign: 'center',
-                                height: '100%', // Fill the category row height (60px)
-                                fontSize: '1.5rem',
-                            }}
-                        >
-                            {category.category}
-                        </div>
-                    ))}
+                    <h2>Final Jeopardy Category:</h2>
+                    <h1 style={{fontSize: '6rem'}}>{boardData[0].category}</h1>
 
-                    {/* Render Clues Below the Categories (Starting from Row 2) */}
-                    {boardData.map((category, colIndex) =>
-                        category.values.map((clue, rowIndex) => {
-                            const clueId = `${clue.value}-${clue.question}`;
-                            const isCleared = clearedClues.has(clueId);
-
-                            return (
-                                <div
-                                    key={`${colIndex}-${rowIndex}`}
-                                    style={{
-                                        display: 'flex',
-                                        justifyContent: 'center',
-                                        alignItems: 'center',
-                                        border: '2px solid #000',
-                                        backgroundColor: isCleared ? '#d3d3d3' : '#FFD700',
-                                        textAlign: 'center',
-                                        height: '100%', // Auto height adapts based on grid row height
-                                        fontSize: '2rem',
-                                        cursor: isHost && !isCleared ? 'pointer' : 'not-allowed',
-                                        gridColumn: colIndex + 1, // Place in the correct column
-                                        gridRow: rowIndex + 2, // Start row 2 for clues
-                                    }}
-                                    onClick={() => handleClueClick(clue, clueId)}
-                                >
-                                    {isCleared ? '' : `$${clue.value}`}
-                                </div>
-                            );
-                        })
-                    )}
+                    <h2>Place Your Wager!</h2>
+                    <WagerInput
+                        players={players}
+                        currentPlayer={currentPlayer}
+                        isHost={isHost}
+                        scores={scores}
+                        wagers={wagers}
+                        wagerSubmitted={wagerSubmitted}
+                        handleWagerChange={handleWagerChange}
+                        submitWager={submitWager}
+                    />
                 </div>
+            )}
+
+            {/* Jeopardy Board */}
+            {!showClue && !isFinalJeopardy && (
+                <JeopardyGrid
+                    boardData={boardData}
+                    isHost={isHost}
+                    clearedClues={clearedClues}
+                    handleClueClick={handleClueClick}
+                    isFinalJeopardy={isFinalJeopardy}
+                />
             )}
 
             {/* Display Selected Clue */}
             {showClue && localSelectedClue && (
-                <div
-                    style={{
-                        position: 'absolute',
-                        top: 0,
-                        left: 0,
-                        right: 0,
-                        bottom: 0,
-                        backgroundColor: '#222',
-                        color: '#FFF',
-                        display: 'flex',
-                        justifyContent: 'center',
-                        alignItems: 'center',
-                        flexDirection: 'column',
-                        zIndex: 10,
-                        padding: '20px',
-                    }}
-                   // onClick={isHost ? handleClueDisplayClick : undefined}
-                    // Attach the updated handler
-                >
-                    <div style={{ textAlign: 'center', cursor: 'pointer', width: '100%' }}>
-                        {/* Question */}
-                        <h1
-                            style={{
-                                fontSize: '2.5rem',
-                                marginBottom: '20px',
-                            }}
-                        >
-                            {localSelectedClue.question}
-                        </h1>
-
-                        {/* Reserve space for the answer */}
-                        <div
-                            style={{
-                                minHeight: '70px', // Reserve enough height for the answer
-                                display: 'flex',
-                                justifyContent: 'center',
-                                alignItems: 'center',
-                            }}
-                        >
-                            {(showAnswer || hostCanSeeAnswer) && (
-                                <p
-                                    style={{
-                                        marginTop: '20px',
-                                        fontSize: '1.5rem',
-                                        color: '#FFD700',
-                                    }}
-                                >
-                                    {localSelectedClue.answer}
-                                </p>
-                            )}
-                        </div>
-
-                        {/* Button to reveal answer or return to board */}
-                        {isHost && (
-                            <button
-                                onClick={() => {
-                                    if (!showAnswer) {
-                                        // Reveal the answer
-                                        setShowAnswer(true);
-                                        const socket = socketRef.current;
-                                        if (socket) {
-                                            socket.send(
-                                                JSON.stringify({
-                                                    type: 'reveal-answer',
-                                                    gameId,
-                                                })
-                                            );
-                                        }
-                                    } else {
-                                        // Return to the board
-                                        setShowClue(false);
-
-                                        if (localSelectedClue) {
-                                            const clueId = `${localSelectedClue.value}-${localSelectedClue.question}`;
-                                            const socket = socketRef.current;
-
-                                            if (socket) {
-                                                socket.send(
-                                                    JSON.stringify({
-                                                        type: 'clue-cleared',
-                                                        gameId,
-                                                        clueId,
-                                                    })
-                                                );
-                                                socket.send(
-                                                    JSON.stringify({
-                                                        type: 'return-to-board',
-                                                        gameId,
-                                                    })
-                                                );
-                                            }
-                                        }
-
-                                        setLocalSelectedClue(null);
-                                    }
-                                }}
-                                style={{
-                                    marginTop: '30px',
-                                    padding: '20px 50px',
-                                    backgroundColor: showAnswer ? '#FF8800' : '#007BFF', // Distinct colors for each action
-                                    color: 'white',
-                                    fontSize: '24px',
-                                    fontWeight: 'bold',
-                                    border: 'none',
-                                    borderRadius: '12px',
-                                    cursor: 'pointer',
-                                    width: '300px',
-                                    transition: 'background-color 0.3s ease',
-                                }}
-                                onMouseEnter={(e) =>
-                                    (e.currentTarget.style.backgroundColor = showAnswer ? '#E06F00' : '#0056B3') // Hover effect
-                                }
-                                onMouseLeave={(e) =>
-                                    (e.currentTarget.style.backgroundColor = showAnswer ? '#FF8800' : '#007BFF') // Reset color
-                                }
-                            >
-                                {showAnswer ? 'Return to Board' : 'Reveal Answer'}
-                            </button>
-                        )}
-                    </div>
-                </div>
+                <SelectedClueDisplay
+                    localSelectedClue={localSelectedClue}
+                    showAnswer={showAnswer}
+                    setShowAnswer={setShowAnswer}
+                    setShowClue={setShowClue}
+                    isHost={isHost}
+                    isFinalJeopardy={isFinalJeopardy}
+                    gameId={gameId}
+                    currentPlayer={currentPlayer}
+                    socketRef={socketRef}
+                    canvasRef={canvasRef}
+                    drawings={drawings}
+                    drawingSubmitted={drawingSubmitted}
+                    setDrawingSubmitted={setDrawingSubmitted}
+                    hostCanSeeAnswer={hostCanSeeAnswer}
+                />
             )}
         </div>
     );
