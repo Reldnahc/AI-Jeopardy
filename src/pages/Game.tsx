@@ -1,15 +1,16 @@
-import {useEffect, useState, useRef} from 'react';
+import {useEffect, useState} from 'react';
 import {useLocation, useParams} from 'react-router-dom';
 import JeopardyBoard from '../components/JeopardyBoard';
 import {Category, Clue} from "../types.ts";
 import Sidebar from "../components/Sidebar.tsx";
 import {DrawingPath} from "../utils/drawingUtils.tsx";
 import FinalScoreScreen from "../components/FinalScoreScreen.tsx";
+import {useWebSocket} from "../contexts/WebSocketContext.tsx";
 
 export default function Game() {
     const {gameId} = useParams<{ gameId: string }>();
     const location = useLocation();
-    const playerName = location.state?.playerName || 'Unknown Player';
+    const playerName = location.state?.playerName || 'Spectator';
     const [host, setHost] = useState<string | null>(null);
     const isHost = location.state?.isHost || false;
     const [players, setPlayers] = useState<string[]>([]);
@@ -29,177 +30,157 @@ export default function Game() {
     const [wagers, setWagers] = useState<Record<string, number>>({});
     const [isGameOver, setIsGameOver] = useState(false); // New state to track if Final Jeopardy is finished
     const [boardData, setBoardData] = useState(location.state?.boardData || {
-        firstBoard: [],
-        secondBoard: [],
-        finalJeopardy: []
+        firstBoard: {},
+        secondBoard: {},
+        finalJeopardy: {}
     });
 
     // Persistent WebSocket connection
-    const socketRef = useRef<WebSocket | null>(null);
+    const { socket, isSocketReady } = useWebSocket();
 
     useEffect(() => {
-        // Initialize WebSocket connection
-        socketRef.current = new WebSocket('https://e23f-71-34-19-23.ngrok-free.app ');
-
         document.title = 'Jeopardy! - ' + gameId;
 
-        socketRef.current.onopen = () => {
-            console.log('Connected to WebSocket');
-            const action = isHost ? 'create-game' : 'join-game';
-            socketRef.current?.send(JSON.stringify({
-                type: action, gameId, playerName,
-                ...(isHost && {boardData}),
-            }));
-        };
+        if (socket && isSocketReady) {
 
+            socket.onmessage = (event) => {
+                const message = JSON.parse(event.data);
+                console.log(message);
+                if (message.type === 'game-state') {
+                    setPlayers(message.players);
+                    setHost(message.host);
+                    setBuzzResult(message.buzzResult ? `${message.buzzResult} buzzed first!` : null);
+                    setIsBuzzed(!!message.buzzResult); // Disable the buzz button if someone already buzzed
+                    setBoardData(message.boardData || null); // Set the board data dynamically
+                    setScores(message.scores || {}); // Initialize scores
 
-        socketRef.current.onmessage = (event) => {
-            const message = JSON.parse(event.data);
+                    if (message.clearedClues) {
+                        // Push cleared clues to an external state handler
+                        updateClearedClues(message.clearedClues);
+                    }
+                    if (message.selectedClue) {
+                        setSelectedClue({
+                            ...message.selectedClue,
+                            showAnswer: message.selectedClue.isAnswerRevealed || false,
+                        });
+                    }
 
-            if (message.type === 'game-state') {
-                setPlayers(message.players);
-                setHost(message.host);
-                setBuzzResult(message.buzzResult ? `${message.buzzResult} buzzed first!` : null);
-                setIsBuzzed(!!message.buzzResult); // Disable the buzz button if someone already buzzed
-                setBoardData(message.boardData || null); // Set the board data dynamically
-                setScores(message.scores || {}); // Initialize scores
-
-                if (message.clearedClues) {
-                    // Push cleared clues to an external state handler
-                    updateClearedClues(message.clearedClues);
                 }
-                if (message.selectedClue) {
+
+                if (message.type === 'final-jeopardy') {
+                    setActiveBoard('finalJeopardy');
+                    //setIsFinalJeopardy(true);
+                }
+
+                if (message.type === "wager-update") {
+                    console.log(`Player ${message.player} submitted a wager of $${message.wager}`);
+                }
+
+                if (message.type === "all-wagers-submitted") {
+                    const {wagers} = message;
+
+                    console.log("All wagers have been submitted! Final Jeopardy can begin.");
+                    setAllWagersSubmitted(true);
+                    setWagers(wagers);
+                    onClueSelected(boardData.finalJeopardy.categories[0].values[0]);
+                }
+
+                if (message.type === 'player-list-update') {
+                    setPlayers(message.players);
+                    setHost(message.host); // Add a separate state for the host
+                }
+
+                if (message.type === 'buzz-result') {
+                    setBuzzResult(`${message.playerName} buzzed!!!`);
+                    setIsBuzzed(true);
+                }
+
+                if (message.type === 'reset-buzzer') {
+                    setBuzzResult(null);
+                    setIsBuzzed(false);
+                }
+
+                if (message.type === 'buzzer-locked') {
+                    setBuzzerLocked(true);
+                }
+
+                if (message.type === 'buzzer-unlocked') {
+                    setBuzzerLocked(false);
+                }
+
+                if (message.type === 'reset-buzzer') {
+                    setBuzzResult(null);
+                    setIsBuzzed(false);
+                    setBuzzerLocked(true);
+                }
+
+                if (message.type === 'game-over') {
+                    setIsGameOver(true); // Switch to the Final Score Screen
+                }
+
+                if (message.type === 'clue-selected') {
+                    // Update the selected clue
                     setSelectedClue({
-                        ...message.selectedClue,
-                        showAnswer: message.selectedClue.isAnswerRevealed || false,
+                        ...message.clue,
+                        showAnswer: false, // Initialize as false when selected
+                    });
+
+                    // Sync cleared clues (received from the server)
+                    if (message.clearedClues) {
+                        setClearedClues(new Set(message.clearedClues)); // Convert array back to a Set
+                    }
+                }
+
+                if (message.type === 'answer-revealed') {
+                    setSelectedClue((prevClue) => {
+                        if (prevClue) {
+                            return {...prevClue, showAnswer: true}; // Set showAnswer to true
+                        }
+                        return prevClue;
                     });
                 }
 
-            }
+                if (message.type === 'all-clues-cleared') {
+                    const clearedClues = message.clearedClues; // Array of cleared clue IDs
 
-            if (message.type === 'final-jeopardy') {
-                setActiveBoard('finalJeopardy');
-                //setIsFinalJeopardy(true);
-            }
-
-            if (message.type === "wager-update") {
-                console.log(`Player ${message.player} submitted a wager of $${message.wager}`);
-            }
-
-            if (message.type === "all-wagers-submitted") {
-                const {wagers} = message;
-
-                console.log("All wagers have been submitted! Final Jeopardy can begin.");
-                setAllWagersSubmitted(true);
-                setWagers(wagers);
-                onClueSelected(boardData.finalJeopardy[0].values[0]);
-            }
-
-            if (message.type === 'player-list-update') {
-                setPlayers(message.players);
-                setHost(message.host); // Add a separate state for the host
-            }
-
-            if (message.type === 'buzz-result') {
-                setBuzzResult(`${message.playerName} buzzed!!!`);
-                setIsBuzzed(true);
-            }
-
-            if (message.type === 'reset-buzzer') {
-                setBuzzResult(null);
-                setIsBuzzed(false);
-            }
-
-            if (message.type === 'buzzer-locked') {
-                setBuzzerLocked(true);
-            }
-
-            if (message.type === 'buzzer-unlocked') {
-                setBuzzerLocked(false);
-            }
-
-            if (message.type === 'reset-buzzer') {
-                setBuzzResult(null);
-                setIsBuzzed(false);
-                setBuzzerLocked(true);
-            }
-
-            if (message.type === 'game-over') {
-                setIsGameOver(true); // Switch to the Final Score Screen
-            }
-
-            if (message.type === 'clue-selected') {
-                // Update the selected clue
-                setSelectedClue({
-                    ...message.clue,
-                    showAnswer: false, // Initialize as false when selected
-                });
-
-                // Sync cleared clues (received from the server)
-                if (message.clearedClues) {
-                    setClearedClues(new Set(message.clearedClues)); // Convert array back to a Set
-                }
-            }
-
-            if (message.type === 'answer-revealed') {
-                setSelectedClue((prevClue) => {
-                    if (prevClue) {
-                        return {...prevClue, showAnswer: true}; // Set showAnswer to true
+                    if (clearedClues && Array.isArray(clearedClues)) {
+                        setClearedClues(new Set(clearedClues)); // Update cleared clues state
                     }
-                    return prevClue;
-                });
-            }
-
-            if (message.type === 'all-clues-cleared') {
-                const clearedClues = message.clearedClues; // Array of cleared clue IDs
-
-                if (clearedClues && Array.isArray(clearedClues)) {
-                    setClearedClues(new Set(clearedClues)); // Update cleared clues state
                 }
-            }
 
-            if (message.type === 'clue-cleared') {
-                const {clueId} = message;
-                setClearedClues((prev) => new Set(prev).add(clueId));
-            }
+                if (message.type === 'clue-cleared') {
+                    const {clueId} = message;
+                    setClearedClues((prev) => new Set(prev).add(clueId));
+                }
 
-            if (message.type === 'returned-to-board') {
-                setSelectedClue(null); // Reset the selected clue
-                setBuzzResult(null);
-            }
+                if (message.type === 'returned-to-board') {
+                    setSelectedClue(null); // Reset the selected clue
+                    setBuzzResult(null);
+                }
 
-            if (message.type === 'transition-to-second-board') {
-                setActiveBoard('secondBoard'); // Switch to second board
-                setClearedClues(new Set()); // Reset cleared clues
-            }
+                if (message.type === 'transition-to-second-board') {
+                    setActiveBoard('secondBoard'); // Switch to second board
+                    setClearedClues(new Set()); // Reset cleared clues
+                }
 
-            if (message.type === 'update-scores') {
-                setScores(message.scores);
-            }
+                if (message.type === 'update-scores') {
+                    setScores(message.scores);
+                }
 
-            if (message.type === "all-final-jeopardy-drawings-submitted") {
-                const {drawings} = message;
-                setDrawings(drawings);
-                console.log("All players have submitted their drawings.");
-            }
+                if (message.type === "all-final-jeopardy-drawings-submitted") {
+                    const {drawings} = message;
+                    setDrawings(drawings);
+                    console.log("All players have submitted their drawings.");
+                }
 
-        };
+            };
+        }
 
-        socketRef.current.onclose = () => {
-            console.log('Disconnected from WebSocket');
-        };
-
-        return () => {
-            // Close WebSocket connection on cleanup
-            socketRef.current?.close();
-            socketRef.current = null;
-            document.title = 'Jeopardy!'; // Cleanup title when unmounting
-        };
-    }, [gameId, playerName, isHost]);
+    }, [gameId, playerName, isHost, socket]);
 
     useEffect(() => {
-        if (socketRef.current && socketRef.current.readyState === WebSocket.OPEN) {
-            socketRef.current.send(
+        if (socket && isSocketReady) {
+            socket.send(
                 JSON.stringify({
                     type: 'update-cleared-clues',
                     gameId,
@@ -210,12 +191,12 @@ export default function Game() {
 
         if (
             activeBoard === 'firstBoard' &&
-            boardData.firstBoard.every((category: Category) =>
+            boardData.firstBoard.categories.every((category: Category) =>
                 category.values.every((clue) => clearedClues.has(`${clue.value}-${clue.question}`))
             )
         ) {
-            if (socketRef.current && socketRef.current.readyState === WebSocket.OPEN) {
-                socketRef.current?.send(
+            if (socket && isSocketReady) {
+                socket.send(
                     JSON.stringify({
                         type: 'transition-to-second-board',
                         gameId,
@@ -231,8 +212,8 @@ export default function Game() {
                 category.values.every((clue) => clearedClues.has(`${clue.value}-${clue.question}`))
             )
         ) {
-            if (socketRef.current && socketRef.current.readyState === WebSocket.OPEN) {
-                socketRef.current?.send(
+            if (socket && isSocketReady) {
+                socket.send(
                     JSON.stringify({
                         type: 'transition-to-final-jeopardy',
                         gameId,
@@ -255,25 +236,26 @@ export default function Game() {
 
     const handleScoreUpdate = (player: string, delta: number) => {
         if (isFinalJeopardy){
-            delta = wagers[player];
+            delta = wagers[player];//TODO fix negative final jeopardy wagers
         }
         const newScores = {...scores, [player]: (scores[player] || 0) + delta};
         setScores(newScores);
-
-        // Emit score update to server
-        socketRef.current?.send(
-            JSON.stringify({
-                type: 'update-score',
-                gameId,
-                player,
-                delta,
-            })
-        );
+        if (socket && isSocketReady) {
+            // Emit score update to server
+            socket.send(
+                JSON.stringify({
+                    type: 'update-score',
+                    gameId,
+                    player,
+                    delta,
+                })
+            );
+        }
     };
 
     const markAllCluesComplete = () => {
-        if (socketRef.current && socketRef.current.readyState === WebSocket.OPEN) {
-            socketRef.current.send(
+        if (socket && isSocketReady) {
+            socket.send(
                 JSON.stringify({
                     type: 'mark-all-complete',
                     gameId,
@@ -282,12 +264,12 @@ export default function Game() {
 
             // Update local state for cleared clues
             if (activeBoard === 'firstBoard') {
-                const allClues = boardData.firstBoard.flatMap((category: Category) =>
+                const allClues = boardData.firstBoard.categories.flatMap((category: Category) =>
                     category.values.map((clue) => `${clue.value}-${clue.question}`)
                 );
                 setClearedClues(new Set(allClues));
             } else if (activeBoard === 'secondBoard') {
-                const allClues = boardData.secondBoard.flatMap((category: Category) =>
+                const allClues = boardData.secondBoard.categories.flatMap((category: Category) =>
                     category.values.map((clue) => `${clue.value}-${clue.question}`)
                 );
                 setClearedClues(new Set(allClues.splice(0, 25)));
@@ -307,20 +289,22 @@ export default function Game() {
 
             return;
         }
-
-        socketRef.current?.send(JSON.stringify({type: 'buzz', gameId, playerName}));
+        if (socket && isSocketReady) {
+            socket.send(JSON.stringify({type: 'buzz', gameId, playerName}));
+        }
     };
 
     const onClueSelected = (clue: Clue) => {
         if (isHost && clue) {
-            socketRef.current?.send(
-                JSON.stringify({
-                    type: 'clue-selected',
-                    gameId,
-                    clue,
-                })
-            );
-
+            if (socket && isSocketReady) {
+                socket.send(
+                    JSON.stringify({
+                        type: 'clue-selected',
+                        gameId,
+                        clue,
+                    })
+                );
+            }
             setSelectedClue(clue); // Update the host's UI
             if (clue.value !== undefined) {
                 setLastQuestionValue(clue.value); // Set last question value based on clue's value
@@ -366,7 +350,6 @@ export default function Game() {
                 handleScoreUpdate={handleScoreUpdate}
                 markAllCluesComplete={markAllCluesComplete}
                 handleBuzz={handleBuzz}
-                socketRef={socketRef}
             />
 
 
@@ -386,13 +369,12 @@ export default function Game() {
                 ) : (
                     <>{/* Jeopardy Board */}
                         <JeopardyBoard
-                            boardData={boardData[activeBoard]}
+                            boardData={boardData[activeBoard].categories}
                             isHost={isHost}
                             onClueSelected={onClueSelected}
                             selectedClue={selectedClue || null}
                             gameId={gameId || ''}
                             clearedClues={clearedClues}
-                            socketRef={socketRef}
                             players={players}
                             scores={scores}
                             currentPlayer={playerName}

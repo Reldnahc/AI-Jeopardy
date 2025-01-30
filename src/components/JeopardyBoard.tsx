@@ -3,7 +3,8 @@ import {Category, Clue} from "../types.ts";
 import JeopardyGrid from "./JeopardyGrid"; // Import the grid component
 import WagerInput from "./WagerInput"; // Import the wager input component
 import { DrawingPath} from "../utils/drawingUtils.tsx";
-import SelectedClueDisplay from "./SelectedClueDisplay.tsx"; // Import the selected clue component
+import SelectedClueDisplay from "./SelectedClueDisplay.tsx";
+import {useWebSocket} from "../contexts/WebSocketContext.tsx"; // Import the selected clue component
 
 interface JeopardyBoardProps {
     boardData: Category[];
@@ -11,7 +12,6 @@ interface JeopardyBoardProps {
     onClueSelected: (clue: Clue) => void;
     selectedClue: Clue | null;
     gameId: string;
-    socketRef: React.MutableRefObject<WebSocket | null>;
     clearedClues: Set<string>; // Add clearedClues
     players: string[];         // Prop to track players in the game
     scores: Record<string, number>; // Player scores
@@ -22,7 +22,7 @@ interface JeopardyBoardProps {
 }
 
 const JeopardyBoard: React.FC<JeopardyBoardProps> =
-    ({ boardData, isHost, onClueSelected, selectedClue, gameId, socketRef, clearedClues, players, scores,
+    ({ boardData, isHost, onClueSelected, selectedClue, gameId, clearedClues, players, scores,
          currentPlayer, allWagersSubmitted, isFinalJeopardy, drawings}) => {
     const [localSelectedClue, setLocalSelectedClue] = useState<Clue | null>(null);
     const [showClue, setShowClue] = useState(false);
@@ -31,7 +31,10 @@ const JeopardyBoard: React.FC<JeopardyBoardProps> =
     const [wagers, setWagers] = useState<Record<string, number>>({});
     const [wagerSubmitted, setWagerSubmitted] = useState<string[]>([]);
     const [drawingSubmitted, setDrawingSubmitted] = useState<Record<string, boolean>>({});
-    // @ts-expect-error works better this way
+    const { socket, isSocketReady } = useWebSocket();
+
+
+        // @ts-expect-error works better this way
     const canvasRef = useRef< ReactSketchCanvas>(null);
     const canvas_with_mask = document.querySelector("#react-sketch-canvas__stroke-group-0");
     if (canvas_with_mask)
@@ -69,6 +72,7 @@ const JeopardyBoard: React.FC<JeopardyBoardProps> =
     }, [selectedClue, isHost, players]);
 
     const handleClueClick = (clue: Clue, clueId: string) => {
+        console.log(localSelectedClue);
         if (isHost && clue && !localSelectedClue && !clearedClues.has(clueId)) {
             onClueSelected(clue);
         }
@@ -86,8 +90,7 @@ const JeopardyBoard: React.FC<JeopardyBoardProps> =
             setWagerSubmitted((prev) => [...prev, player]);
 
             // Notify the server that the wager is submitted
-            const socket = socketRef.current;
-            if (socket) {
+            if (socket && isSocketReady) {
                 socket.send(
                     JSON.stringify({
                         type: "submit-wager",
@@ -171,7 +174,6 @@ const JeopardyBoard: React.FC<JeopardyBoardProps> =
                     isFinalJeopardy={isFinalJeopardy}
                     gameId={gameId}
                     currentPlayer={currentPlayer}
-                    socketRef={socketRef}
                     canvasRef={canvasRef}
                     drawings={drawings}
                     drawingSubmitted={drawingSubmitted}

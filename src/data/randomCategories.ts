@@ -10,7 +10,7 @@ const categoryList = [
     'Social Media', 'Digital Marketing', 'Video Game Design', 'E-Commerce', 'Cryptocurrency',
     'Mars Rovers', 'Telescope Discoveries', 'Energy Efficiency', 'Space Debris', 'Neural Networks',
     'Innovative Gadgets', 'Biohacking', 'Green Energy', 'Medical Nanotechnology', 'Autonomous Vehicles',
-    'Smart Cities', 'Underwater Exploration', 'Rocket Launches', 'Elon Musk’s Innovations', 'SETI Research',
+    'Smart Cities', 'Underwater Exploration', 'Rocket Launches', 'SETI Research',
 
     // History
     'Ancient Egypt', 'Roman Empire', 'Greek Mythology', 'Renaissance', 'Industrial Revolution',

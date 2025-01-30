@@ -1,5 +1,6 @@
 import React from "react";
 import { Clue } from "../types";
+import {useWebSocket} from "../contexts/WebSocketContext.tsx";
 
 interface SidebarProps {
     gameId: string | undefined;
@@ -23,7 +24,6 @@ interface SidebarProps {
     handleScoreUpdate: (player: string, delta: number) => void;
     markAllCluesComplete: () => void;
     handleBuzz: () => void;
-    socketRef: React.MutableRefObject<WebSocket | null>;
 }
 
 const Sidebar: React.FC<SidebarProps> = ({
@@ -48,8 +48,11 @@ const Sidebar: React.FC<SidebarProps> = ({
                                              handleScoreUpdate,
                                              markAllCluesComplete,
                                              handleBuzz,
-                                             socketRef
                                          }) => {
+
+    const { socket, isSocketReady } = useWebSocket();
+
+
     const copyGameIdToClipboard = () => {
         if (gameId) {
             navigator.clipboard.writeText(gameId); // Copy Game ID to clipboard
@@ -280,14 +283,18 @@ const Sidebar: React.FC<SidebarProps> = ({
                     <button
                         onClick={() => {
                             if (buzzerLocked) {
-                                socketRef.current?.send(
-                                    JSON.stringify({ type: "unlock-buzzer", gameId })
-                                );
+                                if (socket && isSocketReady) {
+                                    socket.send(
+                                        JSON.stringify({ type: "unlock-buzzer", gameId })
+                                    );
+                                }
                                 setBuzzerLocked(false);
                             } else {
-                                socketRef.current?.send(
-                                    JSON.stringify({ type: "reset-buzzer", gameId })
-                                );
+                                if (socket && isSocketReady) {
+                                    socket.send(
+                                        JSON.stringify({type: "reset-buzzer", gameId})
+                                    );
+                                }
                                 setIsBuzzed(false);
                                 setBuzzResult(null);
                                 setBuzzerLocked(true);

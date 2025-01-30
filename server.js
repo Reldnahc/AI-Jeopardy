@@ -1,94 +1,14 @@
 import { WebSocketServer } from 'ws';
-import express from 'express';
-import cors from 'cors';
 import 'dotenv/config';
 import OpenAI from "openai";
+import Anthropic from "@anthropic-ai/sdk";
 
 const openai = new OpenAI();
-const app = express();
-
-app.use(cors());
-app.use(express.json());
-
-app.post('/generate-board', async (req, res) => {
-    const { categories } = req.body; // Receive 10 categories
-    const difficulty = "difficult";
-    console.log(categories);
-    if (!categories || categories.length !== 11) {
-        return res.status(400).json({ error: 'You must provide exactly 11 categories.' });
-    }
-
-    const [firstCategories, secondCategories, finalCategory] = [categories.slice(0, 5), categories.slice(5,10), categories[10]];
-    console.log(finalCategory);
-    const prompt = (categories, double = false) => `
-        Create a Jeopardy board with the following 5 categories: ${categories.join(', ')}.
-        Each category should contain 5 questions, each with a value and an answer. Make sure they follow the jeopardy format.
-        Each answer should be formated in question like jeopardy. The questions should be more difficult according to their value. 
-        The Questions should avoid having the answer in the clue or category title. 
-        ${double ? 'Make this a Double Jeopardy board, ensuring values are doubled, ranging from 400 to 2000 instead of 200 to 1000. ' +
-        'they should be more difficult according to their value. questions over 500 points should be hard.' : ''}
-        Format the response in JSON as:
-        [
-            {
-                "category": "Category Name",
-                "values": [
-                    { "value": 200, "question": "Question", "answer": "Answer?" },
-                    // More values...
-                ]
-            },
-            // More categories...
-        ]
-    `;
-
-    const finalPrompt = (category) => `
-         Generate me Json for a very difficult question in this category ${category}.
-         It should be a very difficult question. Make sure it follows the jeopardy format.
-         The answer should be formated in question like jeopardy.
-         Format the response in JSON as:
-         [
-            {
-                "category": "Category Name",
-                "values": [
-                    { "question": "Question", "answer": "Answer?" },
-                ]
-            },
-        ]
-   `;
-    //const model = "o1-mini";
-    const model = "gpt-4o-mini";
-    try {
-        const firstBoardPromise = openai.chat.completions.create({
-            model: model,
-            messages: [{ role: "user", content: prompt(firstCategories) }],
-            store: true,
-        });
-        const secondBoardPromise = openai.chat.completions.create({
-            model: model,
-            messages: [{ role: "user", content: prompt(secondCategories, true) }],
-            store: true,
-        });
-        const finalBoardPromise = openai.chat.completions.create({
-            model: model,
-            messages: [{ role: "user", content: finalPrompt(finalCategory) }],
-            store: true,
-        });
-
-        // Generate both boards
-        const [firstResponse, secondResponse, finalResponse] = await Promise.all([firstBoardPromise, secondBoardPromise, finalBoardPromise]);
-
-        const firstBoard = JSON.parse(firstResponse.choices[0].message.content.replace(/```(?:json)?/g, "").trim());
-        const secondBoard = JSON.parse(secondResponse.choices[0].message.content.replace(/```(?:json)?/g, "").trim());
-        const finalJeopardy = JSON.parse(finalResponse.choices[0].message.content.replace(/```(?:json)?/g, "").trim());
-
-        res.status(200).json({ boardData: { firstBoard, secondBoard, finalJeopardy } });
-    } catch (error) {
-        console.error('[Server] Error generating board data:', error.message);
-        res.status(500).json({ error: 'Failed to generate board data. Please try again later.' });
-    }
+const anthropic = new Anthropic();
+const deepseek = new OpenAI({
+    baseURL: 'https://api.deepseek.com',
+    apiKey: process.env.DEEPSEEK_API_KEY
 });
-
-const HTTP_PORT = 3000; // Port for HTTP requests
-app.listen(HTTP_PORT, () => console.log(`HTTP server running on http://localhost:${HTTP_PORT}`));
 
 const WS_PORT = 3001;
 const wss = new WebSocketServer({ port: WS_PORT, });
@@ -102,104 +22,41 @@ wss.on('connection', (ws) => {
     ws.id = Math.random().toString(36).substr(2, 9); // Assign a unique ID to each socket
     console.log('New client connected');
 
-    ws.on('message', (message) => {
+    ws.on('message', async (message) => {
         const data = JSON.parse(message);
-
-        if (data.type === 'create-game' || data.type === 'join-game') {
+        console.log(`[Server] Received message from client ${ws.id}:`, data);
+        if (data.type === 'create-game' || data.type === 'join-game' ||
+            data.type === 'create-lobby' || data.type === 'join-lobby' ||
+            data.type === 'check-lobby') {
             // Assign the game ID to the WebSocket instance
             ws.gameId = data.gameId;
         }
 
+        if (data.type === 'create-lobby') {
+            const {gameId, host, categories} = data;
 
-        if (data.type === 'create-game') {
-            const { gameId, playerName, boardData} = data;
-
-            console.log(boardData);
-            // If the game already exists, reassign the host
             if (games[gameId]) {
-                games[gameId].host = playerName;
+                games[gameId].host = host;
 
-                ws.send(JSON.stringify({
-                    type: 'game-state',
-                    gameId,
-                    players: games[gameId].players.map((p) => p.name),
-                    host: games[gameId].host,
-                    buzzResult: games[gameId].buzzed, // Current buzz result, if any
-                    clearedClues: Array.from(games[gameId].clearedClues || new Set()), // Send cleared clues
-                    boardData: boardData,
-                    selectedClue: games[gameId].selectedClue || null, // Add the current selected clue
-                    buzzerLocked: games[gameId].buzzerLocked,
-                    scores: games[gameId].scores,
-                }));
 
-                broadcast(gameId, {
-                    type: 'player-list-update',
-                    players: games[gameId].players.map((p) => p.name),
-                    host: games[gameId].host,
-                });
             } else {
                 // Create a new game
+                console.log(`Creating new game ${gameId} with host ${host}`);
                 games[gameId] = {
-                    host: playerName,
+                    host: host,
                     players: [],
-                    scores: {},
-                    buzzed: null,
-                    buzzerLocked: true,
-                    clearedClues: new Set(),
-                    boardData: boardData,
+                    inLobby: true,
+                    categories: categories || [],
+
                 };
             }
-
-            // Notify the host
             ws.send(JSON.stringify({
-                type: 'game-created',
-                gameId,
-                host: playerName,
-            }));
-        }
-
-        if (data.type === 'join-game') {
-            const { gameId, playerName } = data;
-            // Reject blank player names
-            if (!playerName || !playerName.trim()) {
-                ws.send(JSON.stringify({ type: 'error', message: 'Player name cannot be blank.' }));
-                return;
-            }
-
-            if (!games[gameId]) {
-                ws.send(JSON.stringify({ type: 'error', message: 'Game does not exist!' }));
-                return;
-            }
-
-            // Check if the player is already in the game based on socket ID
-            const existingPlayer = games[gameId].players.find((p) => p.id === ws.id);
-            if (existingPlayer) {
-                ws.send(JSON.stringify({ type: 'info', message: 'You are already in the game.' }));
-                    return;
-            }
-
-            // Add the player to the game if not the host
-            if (games[gameId].host !== playerName && !games[gameId].players.includes(playerName)) {
-                games[gameId].players.push({ id: ws.id, name: playerName });
-            }
-
-            // Log the updated player list for debugging
-            console.log(`Players in game ${gameId}:`, games[gameId].players);
-            // Notify the new player of the current game state (buzz result, buzzer status, board, and selected clue if any)
-            ws.send(JSON.stringify({
-                type: 'game-state',
+                type: 'lobby-state',
                 gameId,
                 players: games[gameId].players.map((p) => p.name),
                 host: games[gameId].host,
-                buzzResult: games[gameId].buzzed,
-                clearedClues: Array.from(games[gameId].clearedClues || new Set()),
-                boardData: games[gameId].boardData,
-                selectedClue: games[gameId].selectedClue || null, // Add currently selected clue if any
-                buzzerLocked: games[gameId].buzzerLocked,         // Send buzzer state
-                scores: games[gameId].scores,
+                categories: games[gameId].categories,
             }));
-
-            // Notify all players
             broadcast(gameId, {
                 type: 'player-list-update',
                 players: games[gameId].players.map((p) => p.name),
@@ -207,8 +64,111 @@ wss.on('connection', (ws) => {
             });
         }
 
+        if (data.type === 'join-lobby') {
+            const {gameId, playerName} = data;
+            // Reject blank player names
+            if (!playerName || !playerName.trim()) {
+                ws.send(JSON.stringify({type: 'error', message: 'Player name cannot be blank.'}));
+                return;
+            }
+
+            if (!games[gameId]) {
+                ws.send(JSON.stringify({type: 'error', message: 'Lobby does not exist!'}));
+                return;
+            }
+
+            // Check if the player is already in the game based on socket ID
+            const existingPlayer = games[gameId].players.find((p) => p.id === ws.id);
+            if (existingPlayer) {
+                ws.send(JSON.stringify({type: 'info', message: 'You are already in the lobby.'}));
+                return;
+            }
+
+            // Add the player to the game if not the host
+            if (games[gameId].host !== playerName && !games[gameId].players.includes(playerName)) {
+                games[gameId].players.push({id: ws.id, name: playerName});
+            }
+
+            // Log the updated player list for debugging
+            console.log(`Players in game ${gameId}:`, games[gameId].players);
+
+            ws.send(JSON.stringify({
+                type: 'lobby-state',
+                gameId,
+                players: games[gameId].players.map((p) => p.name),
+                host: games[gameId].host,
+                categories: games[gameId].categories || [],
+            }));
+            broadcast(gameId, {
+                type: 'player-list-update',
+                players: games[gameId].players.map((p) => p.name),
+                host: games[gameId].host,
+            });
+        }
+
+        if (data.type === 'create-game') {
+            const {gameId, categories, selectedModel} = data;
+
+            broadcast(gameId, {
+                type: 'trigger-loading',
+            });
+
+            const boardData = await createBoardData(categories, selectedModel);
+
+            console.log(boardData);
+            // If the game already exists, reassign the host
+
+            if (!games[gameId]) {
+                //error handle
+                console.log("error moving from lobby to game. game reference not found.");
+            } else if (games[gameId].inLobby) {
+                games[gameId].buzzed = null;//TODO this should default
+                games[gameId].buzzerLocked = true;//this should default
+                games[gameId].clearedClues = new Set();//this should default
+                games[gameId].boardData = boardData;
+                games[gameId].scores = {}; //this should default
+                games[gameId].inLobby = false;
+
+
+                broadcast(gameId, {
+                    type: 'start-game',
+                    boardData: boardData,
+                });
+            }
+
+        }
+
+        if (data.type === 'check-lobby') {
+            const {gameId} = data;
+            let isValid = false;
+            console.log(games[gameId]);
+            if (games[gameId]) {
+                isValid = true;
+            }
+
+            broadcast(gameId, {
+                type: 'check-lobby-response',
+                isValid,
+            });
+        }
+
+        if (data.type === 'update-categories') {
+            const { gameId, categories } = data;
+
+            if (games[gameId] && data.host === games[gameId].host) {
+                // Broadcast the updated categories to all players in the lobby
+                broadcast(gameId, {
+                    type: 'categories-updated',
+                    categories,
+                });
+                console.log(`[Server] Categories updated for game ${gameId}:`, categories);
+            } else {
+                ws.send(JSON.stringify({ type: 'error', message: 'Only the host can update categories.' }));
+            }
+        }
+
         if (data.type === 'buzz') {
-            const { gameId, playerName } = data;
+            const {gameId, playerName} = data;
 
             if (games[gameId] && !games[gameId].buzzed) {
                 games[gameId].buzzed = playerName;
@@ -222,26 +182,26 @@ wss.on('connection', (ws) => {
         }
 
         if (data.type === 'reset-buzzer') {
-            const { gameId } = data;
+            const {gameId} = data;
 
             if (games[gameId]) {
                 games[gameId].buzzed = null;
                 games[gameId].buzzerLocked = true;
 
                 // Notify all players to reset the buzzer
-                broadcast(gameId, { type: 'reset-buzzer' });
+                broadcast(gameId, {type: 'reset-buzzer'});
             }
         }
 
         if (data.type === 'mark-all-complete') {
-            const { gameId } = data;
+            const {gameId} = data;
 
             if (games[gameId]) {
                 const game = games[gameId];
 
                 // Determine all clues based on boardData
                 if (game.boardData) {
-                    const { firstBoard, secondBoard, finalJeopardy } = game.boardData;
+                    const {firstBoard, secondBoard, finalJeopardy} = game.boardData;
 
                     const clearCluesFromBoard = (board) => {
                         board.forEach(category => {
@@ -273,14 +233,14 @@ wss.on('connection', (ws) => {
             }
         }
         if (data.type === 'trigger-game-over') {
-            const { gameId } = data;
+            const {gameId} = data;
 
             broadcast(gameId, {
                 type: 'game-over',
             });
         }
         if (data.type === 'clue-selected') {
-            const { gameId, clue } = data;
+            const {gameId, clue} = data;
 
             if (games[gameId]) {
                 const clueId = `${clue.value}-${clue.question}`;
@@ -300,15 +260,64 @@ wss.on('connection', (ws) => {
                     clearedClues: Array.from(games[gameId].clearedClues),
                 });
 
-                broadcast(gameId, { type: 'reset-buzzer' });
-                broadcast(gameId, { type: 'buzzer-locked' });
+                broadcast(gameId, {type: 'reset-buzzer'});
+                broadcast(gameId, {type: 'buzzer-locked'});
             } else {
                 console.error(`[Server] Game ID ${gameId} not found when selecting clue.`);
             }
         }
 
+        if (data.type === 'join-game') {
+            const { gameId, playerName } = data;
+            // Reject blank player names
+            console.log(data);
+            if (!playerName || !playerName.trim()) {
+                ws.send(JSON.stringify({ type: 'error', message: 'Player name cannot be blank.' }));
+                return;
+            }
+
+            if (!games[gameId]) {
+                ws.send(JSON.stringify({ type: 'error', message: 'Game does not exist!' }));
+                return;
+            }
+
+            // Check if the player is already in the game based on socket ID
+            const existingPlayer = games[gameId].players.find((p) => p.id === ws.id);
+            if (existingPlayer) {
+                ws.send(JSON.stringify({ type: 'info', message: 'You are already in the game.' }));
+                return;
+            }
+
+            if (games[gameId].host !== playerName && !games[gameId].players.includes(playerName)) {
+                games[gameId].players.push({ id: ws.id, name: playerName });
+            }
+
+            // Log the updated player list for debugging
+            console.log(`Players in game ${gameId}:`, games[gameId].players);
+            // Notify the new player of the current game state (buzz result, buzzer status, board, and selected clue if any)
+            ws.send(JSON.stringify({
+                type: 'game-state',
+                gameId,
+                players: games[gameId].players.map((p) => p.name),
+                host: games[gameId].host,
+                buzzResult: games[gameId].buzzed,
+                clearedClues: Array.from(games[gameId].clearedClues || new Set()),
+                boardData: games[gameId].boardData,
+                selectedClue: games[gameId].selectedClue || null, // Add currently selected clue if any
+                buzzerLocked: games[gameId].buzzerLocked,         // Send buzzer state
+                scores: games[gameId].scores,
+            }));
+
+            // Notify all players
+            broadcast(gameId, {
+                type: 'player-list-update',
+                players: games[gameId].players.map((p) => p.name),
+                host: games[gameId].host,
+            });
+        }
+
         if (data.type === 'reveal-answer') {
-            const { gameId } = data;
+            const {gameId} = data;
 
             if (games[gameId] && games[gameId].selectedClue) {
                 // Update the clue's state to mark the answer as revealed
@@ -324,7 +333,7 @@ wss.on('connection', (ws) => {
         }
 
         if (data.type === 'return-to-board') {
-            const { gameId } = data;
+            const {gameId} = data;
 
             if (games[gameId]) {
                 games[gameId].selectedClue = null; // Clear the selected clue
@@ -338,7 +347,7 @@ wss.on('connection', (ws) => {
         }
 
         if (data.type === 'clue-cleared') {
-            const { gameId, clueId } = data;
+            const {gameId, clueId} = data;
 
             if (games[gameId]) {
                 // Add the cleared clue to the game's cleared clues set
@@ -358,35 +367,35 @@ wss.on('connection', (ws) => {
         }
 
         if (data.type === 'unlock-buzzer') {
-            const { gameId } = data;
+            const {gameId} = data;
 
             if (games[gameId]) {
                 games[gameId].buzzerLocked = false; // Unlock the buzzer
-                broadcast(gameId, { type: 'buzzer-unlocked' }); // Notify all players
+                broadcast(gameId, {type: 'buzzer-unlocked'}); // Notify all players
             }
         }
 
         if (data.type === 'lock-buzzer') {
-            const { gameId } = data;
+            const {gameId} = data;
 
             if (games[gameId]) {
                 games[gameId].buzzerLocked = true; // Lock the buzzer
-                broadcast(gameId, { type: 'buzzer-locked' }); // Notify all players
+                broadcast(gameId, {type: 'buzzer-locked'}); // Notify all players
             }
         }
 
         if (data.type === 'transition-to-second-board') {
-            const { gameId } = data;
+            const {gameId} = data;
 
             if (games[gameId]) {
-                broadcast(gameId, { type: 'transition-to-second-board' });
+                broadcast(gameId, {type: 'transition-to-second-board'});
             } else {
                 console.error(`[Server] Game ID ${gameId} not found for board transition.`);
             }
         }
 
         if (data.type === 'update-score') {
-            const { gameId, player, delta } = data;
+            const {gameId, player, delta} = data;
 
             if (games[gameId]) {
                 // Update score
@@ -402,7 +411,7 @@ wss.on('connection', (ws) => {
         }
 
         if (data.type === "submit-wager") {
-            const { gameId, player, wager } = data;
+            const {gameId, player, wager} = data;
 
             if (games[gameId]) {
                 if (!games[gameId].wagers) {
@@ -425,23 +434,23 @@ wss.on('connection', (ws) => {
                         Object.keys(games[gameId].wagers).includes("host"));
 
                 if (allSubmitted) {
-                    broadcast(gameId, { type: "all-wagers-submitted", wagers: games[gameId].wagers });
+                    broadcast(gameId, {type: "all-wagers-submitted", wagers: games[gameId].wagers});
                 }
             }
         }
 
         if (data.type === 'transition-to-final-jeopardy') {
-            const { gameId } = data;
+            const {gameId} = data;
 
             if (games[gameId]) {
-                broadcast(gameId, { type: 'final-jeopardy' });
+                broadcast(gameId, {type: 'final-jeopardy'});
             } else {
                 console.error(`[Server] Game ID ${gameId} not found for board transition.`);
             }
         }
 
         if (data.type === 'final-jeopardy-drawing') {
-            const { gameId, player, drawing } = data;
+            const {gameId, player, drawing} = data;
 
             if (games[gameId]) {
                 // Initialize the drawings object if not present
@@ -508,3 +517,131 @@ function broadcast(gameId, message) {
     });
 }
 
+async function createBoardData(categories, model = "gpt-4o-mini") {
+    console.log("Beginning to create board data with categories: " + categories);
+
+    if (!categories || categories.length !== 11) {
+        return res.status(400).json({error: 'You must provide exactly 11 categories.'});
+    }
+
+    const [firstCategories, secondCategories, finalCategory] = [categories.slice(0, 5), categories.slice(5, 10), categories[10]];
+
+    const prompt = (categories, double = false) => `
+        Create a Jeopardy board with the following 5 categories: ${categories.join(', ')}.
+        Each category should contain 5 questions, each with a value and an answer. Make sure they follow the jeopardy format.
+        Each answer should be formated in question like jeopardy. The questions should be more difficult according to their value. 
+        The Questions should avoid having the answer in the clue or category title. 
+        ${double ? 'Make this a Double Jeopardy board, ensuring values are doubled, ranging from 400 to 2000 instead of 200 to 1000. ' +
+        'they should be more difficult according to their value. questions over 500 points should be hard.' : ''}
+        Format the response in JSON as:
+        {
+           "categories": [
+                {
+                    "category": "Category Name",
+                    "values": [
+                        { "value": 200, "question": "Question", "answer": "Answer?" },
+                        // More values...
+                    ]
+                },
+                // More categories...
+            ]
+        }
+    `;
+    const finalPrompt = (category) => `
+         Generate me Json for a very difficult question in this category ${category}.
+         It should be a very difficult question. Make sure it follows the jeopardy format.
+         The answer should be formated in question like jeopardy.
+         Format the response in JSON as:
+          {
+            "categories": [
+               {
+                   "category": "Category Name",
+                   "values": [
+                       { "question": "Question", "answer": "Answer?" },
+                   ]
+               },
+            ]
+        }
+   `;
+    function callDeepseek(model, prompt, temp = 1) {
+        return deepseek.chat.completions.create({
+            model: model,
+            messages: [{role: "user", content: prompt}],
+            store: true,
+            temperature: temp,
+        });
+    }
+    function callOpenAi(model, prompt, temp = 1) {
+        return openai.chat.completions.create({
+            model: model,
+            messages: [{role: "user", content: prompt}],
+            store: true,
+            temperature: temp,
+        });
+    }
+    function callAnthropic(model, prompt, temp = .5) {
+        return anthropic.messages.create({
+            model: model,
+            temperature: temp,
+            system: "Respond only with valid JSON as described. Do not include any other text.",
+            max_tokens: 2000,
+            messages: [
+                {
+                    "role": "user",
+                    "content": [
+                        {
+                            "type": "text",
+                            "text": prompt
+                        }
+                    ]
+                }
+            ]
+        });
+    }
+
+
+    try {
+        let apiCall;
+
+        switch (model) {
+            case "gpt-4o-mini":
+            case "gpt-4o":
+            case "o1-mini":
+                apiCall = callOpenAi;
+                break;
+            case "deepseek":
+                apiCall = callDeepseek;
+                break;
+            case "claude-3-5-sonnet-20241022":
+                apiCall = callAnthropic;
+                break;
+        }
+
+        const firstBoardPromise = apiCall(model, prompt(firstCategories));
+        const secondBoardPromise = apiCall(model, prompt(secondCategories));
+        const finalBoardPromise = apiCall(model, finalPrompt(finalCategory));
+
+        const [firstResponse, secondResponse, finalResponse] = await Promise.all([firstBoardPromise, secondBoardPromise, finalBoardPromise]);
+
+        let firstBoard;
+        let secondBoard;
+        let finalJeopardy;
+
+        console.log(firstResponse);
+
+        if (firstResponse.content && firstResponse.content[0]) {
+            firstBoard = JSON.parse(firstResponse.content[0].text.replace(/```(?:json)?/g, "").trim());
+            secondBoard = JSON.parse(secondResponse.content[0].text.replace(/```(?:json)?/g, "").trim());
+            finalJeopardy = JSON.parse(finalResponse.content[0].text.replace(/```(?:json)?/g, "").trim());
+        } else {
+            firstBoard = JSON.parse(firstResponse.choices[0].message.content.replace(/```(?:json)?/g, "").trim());
+            secondBoard = JSON.parse(secondResponse.choices[0].message.content.replace(/```(?:json)?/g, "").trim());
+            finalJeopardy = JSON.parse(finalResponse.choices[0].message.content.replace(/```(?:json)?/g, "").trim());
+        }
+
+        return {firstBoard, secondBoard, finalJeopardy};
+    } catch (error) {
+        console.error('[Server] Error generating board data:', error.message);
+        console.error(error);
+    }
+}
