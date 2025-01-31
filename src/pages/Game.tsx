@@ -208,7 +208,7 @@ export default function Game() {
             }
         } else if (
             activeBoard === 'secondBoard' &&
-            boardData.secondBoard.every((category: Category) =>
+            boardData.secondBoard.categories.every((category: Category) =>
                 category.values.every((clue) => clearedClues.has(`${clue.value}-${clue.question}`))
             )
         ) {

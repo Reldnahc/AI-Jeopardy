@@ -22,7 +22,7 @@ export const WebSocketProvider: React.FC<{ children: React.ReactNode }> = ({ chi
             socketRef.current.onopen = () => {
                 console.log("WebSocket connected");
                 setIsSocketReady(true); // Set ready state to true
-                const currentPage = location.pathname;
+                const currentPage = location.hash;
                 console.log("Current page:", currentPage);
 
                 const gameId = localStorage.getItem("gameId"); // Persist game ID in localStorage
