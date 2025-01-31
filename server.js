@@ -14,6 +14,7 @@ const WS_PORT = 3001;
 const wss = new WebSocketServer({ port: WS_PORT, });
 
 console.log(`WebSocket server running on ws://localhost:${WS_PORT}`);
+const PING_INTERVAL = 30000;
 
 // Store game state
 const games = {};
@@ -21,6 +22,12 @@ const games = {};
 wss.on('connection', (ws) => {
     ws.id = Math.random().toString(36).substr(2, 9); // Assign a unique ID to each socket
     console.log('New client connected');
+    ws.isAlive = true; // Mark connection as alive when established
+
+    ws.on('pong', () => {
+        ws.isAlive = true; // Mark as healthy when a pong is received
+    });
+
 
     ws.on('message', async (message) => {
         const data = JSON.parse(message);
@@ -516,6 +523,20 @@ function broadcast(gameId, message) {
         }
     });
 }
+
+setInterval(() => {
+    wss.clients.forEach((ws) => {
+        if (ws.isAlive === false) {
+            console.log(`Terminating dead connection for client ${ws.id}`);
+            return ws.terminate(); // Terminate the connection if unresponsive
+        }
+
+        // Mark as inactive until the client responds with a pong
+        ws.isAlive = false;
+        ws.ping(); // Send a ping for the client to respond with pong
+    });
+}, PING_INTERVAL);
+
 
 async function createBoardData(categories, model = "gpt-4o-mini") {
     console.log("Beginning to create board data with categories: " + categories);

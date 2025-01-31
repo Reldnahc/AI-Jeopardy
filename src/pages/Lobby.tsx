@@ -88,7 +88,7 @@ const Lobby: React.FC = () => {
                         })
                     );
                     console.log(message.boardData.firstBoard);
-                    navigate(`/game/${gameId}`, {
+                    navigate(`/AI-Jeopardy/game/${gameId}`, {
                         state: {
                             playerName: playerName.trim(),
                             isHost: isHost,
@@ -100,7 +100,7 @@ const Lobby: React.FC = () => {
                 if (message.type === 'check-lobby-response') {
                     console.log(message.isValid);
                     if (!message.isValid) {
-                        navigate("/");
+                        navigate("/AI-Jeopardy/");
                     } else {
                         setIsLoading(false);
                     }

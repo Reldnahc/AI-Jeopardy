@@ -39,7 +39,7 @@ export default function MainPage() {
                 host: playerName,
                 categories: handleGenerateRandomCategories()
             }));
-            navigate(`/lobby/${newGameId}`, {
+            navigate(`/AI-Jeopardy/lobby/${newGameId}`, {
                 state: {
                     playerName: playerName.trim(),
                     isHost: true,
@@ -63,7 +63,7 @@ export default function MainPage() {
                 gameId,
                 playerName: playerName.trim(),
             }));
-            navigate(`/lobby/${gameId}`, {
+            navigate(`/AI-Jeopardy/lobby/${gameId}`, {
                 state: {
                     playerName: playerName.trim(),
                     isHost: false,

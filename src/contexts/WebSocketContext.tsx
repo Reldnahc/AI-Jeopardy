@@ -16,7 +16,7 @@ export const WebSocketProvider: React.FC<{ children: React.ReactNode }> = ({ chi
     useEffect(() => {
         if (!socketRef.current) {
             // Initialize WebSocket connection
-            socketRef.current = new WebSocket("ws://localhost:3001");
+            socketRef.current = new WebSocket("wss://reldnahc.duckdns.org");
 
             // Handle successful connection
             socketRef.current.onopen = () => {
