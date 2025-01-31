@@ -27,6 +27,5 @@ jobs:
             source /home/chan/.bashrc &&
             source /home/chan/.bash_profile &&
             fnm use 22 &&
-            npm install &&
-            nohup npm start > backend.log 2>&1 &
+            npm install 
           "
