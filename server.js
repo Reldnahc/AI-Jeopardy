@@ -19,6 +19,12 @@ const PING_INTERVAL = 30000;
 // Store game state
 const games = {};
 
+let cotd = {
+    category: "Science & Nature",
+    description: "Explore the wonders of the natural world and the marvels of modern science."
+
+}
+
 wss.on('connection', (ws) => {
     ws.id = Math.random().toString(36).substr(2, 9); // Assign a unique ID to each socket
     console.log('New client connected');
@@ -157,6 +163,10 @@ wss.on('connection', (ws) => {
                 type: 'check-lobby-response',
                 isValid,
             });
+        }
+
+        if (data.type === 'check-cotd') {
+            ws.send(JSON.stringify({ type: 'category-of-the-day', cotd }));
         }
 
         if (data.type === 'update-categories') {
@@ -537,6 +547,43 @@ setInterval(() => {
     });
 }, PING_INTERVAL);
 
+createCategoryOfTheDay();
+setInterval(() => {
+    createCategoryOfTheDay();
+}, 60000 * 60);
+
+function callOpenAi(model, prompt, temp = 1) {
+    return openai.chat.completions.create({
+        model: model,
+        messages: [{role: "user", content: prompt}],
+        store: true,
+        temperature: temp,
+    });
+}
+
+async function createCategoryOfTheDay() {
+    console.log("Creating new Category of the day.");
+    const prompt = `
+        Create a category of the day.
+        The category should be a random trivia category.
+        It is okay to use slightly fringe material.
+        create a description for the category.
+        the description should be a short single sentence description of the category.
+        it should be worded in a fun expressive and brief way.
+        Format the response in JSON as:
+        {
+            "category": "Category Name",
+            "description": "description",
+        }
+    `
+    const response = await callOpenAi("gpt-4o-mini", prompt, 1);
+    let data;
+    if (response.choices && response.choices[0]) {
+        data = JSON.parse(response.choices[0].message.content.replace(/```(?:json)?/g, "").trim());
+    }
+    console.log(data);
+    cotd = data;
+}
 
 async function createBoardData(categories, model = "gpt-4o-mini") {
     console.log("Beginning to create board data with categories: " + categories);
@@ -586,14 +633,6 @@ async function createBoardData(categories, model = "gpt-4o-mini") {
    `;
     function callDeepseek(model, prompt, temp = 1) {
         return deepseek.chat.completions.create({
-            model: model,
-            messages: [{role: "user", content: prompt}],
-            store: true,
-            temperature: temp,
-        });
-    }
-    function callOpenAi(model, prompt, temp = 1) {
-        return openai.chat.completions.create({
             model: model,
             messages: [{role: "user", content: prompt}],
             store: true,

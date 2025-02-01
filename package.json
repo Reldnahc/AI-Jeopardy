@@ -2,7 +2,7 @@
   "name": "ai-jeopardy",
   "private": true,
   "version": "0.0.0",
-  "homepage": "https://reldnahc.github.io/AI-Jeopardy/",
+  "homepage": "https://ai-jeopardy.com/",
   "type": "module",
   "scripts": {
     "dev": "vite",
