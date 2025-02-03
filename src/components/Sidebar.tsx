@@ -93,50 +93,52 @@ const Sidebar: React.FC<SidebarProps> = ({
                         Players
                     </h2>
                     <ul className="list-none p-0 m-0">
-                        {players.map((player, index) => (
-                            <li
-                                key={index}
-                                className={`flex items-center p-2.5 ${
-                                    host === player ? "bg-amber-100" : "bg-gray-100"
-                                } rounded-lg mb-2 text-base shadow-sm text-blue-500`}
-                            >
-                                <div
-                                    className={`w-8 h-8 rounded-full ${
-                                        host === player ? "bg-amber-400" : "bg-blue-500"
-                                    } flex justify-center items-center text-white font-bold mr-2.5`}
+                        {players
+                            .filter((player) => !(players.length > 1 && player === host)) // Exclude the host if there are multiple players
+                            .map((player, index) => (
+                                <li
+                                    key={index}
+                                    className={`flex items-center p-2.5 ${
+                                        host === player ? "bg-amber-100" : "bg-gray-100"
+                                    } rounded-lg mb-2 text-base shadow-sm text-blue-500`}
                                 >
-                                    {player.charAt(0).toUpperCase()}
-                                </div>
-                                <div className="flex flex-col flex-1">
-                                <span className={host === player ? "font-bold" : ""}>
-                                    {player}
-                                </span>
-                                    <span
-                                        className={`-mt-1.5 font-bold text-sm ${
-                                            scores[player] < 0 ? "text-red-500" : "text-green-500"
-                                        }`}
+                                    <div
+                                        className={`w-8 h-8 rounded-full ${
+                                            host === player ? "bg-amber-400" : "bg-blue-500"
+                                        } flex justify-center items-center text-white font-bold mr-2.5`}
                                     >
-                                    ${scores[player] || 0}
-                                </span>
-                                </div>
-                                {isHost && (
-                                    <div className="flex gap-2 ml-auto">
-                                        <button
-                                            onClick={() => handleScoreUpdate(player, -lastQuestionValue)}
-                                            className="w-8 h-8 p-0 bg-red-500 text-white rounded-full flex items-center justify-center text-sm hover:bg-red-600"
-                                        >
-                                            −
-                                        </button>
-                                        <button
-                                            onClick={() => handleScoreUpdate(player, lastQuestionValue)}
-                                            className="w-8 h-8 p-0 bg-green-500 text-white rounded-full flex items-center justify-center text-sm hover:bg-green-600"
-                                        >
-                                            ＋
-                                        </button>
+                                        {player.charAt(0).toUpperCase()}
                                     </div>
-                                )}
-                            </li>
-                        ))}
+                                    <div className="flex flex-col flex-1">
+                    <span className={host === player ? "font-bold" : ""}>
+                        {player}
+                    </span>
+                                        <span
+                                            className={`-mt-1.5 font-bold text-sm ${
+                                                scores[player] < 0 ? "text-red-500" : "text-green-500"
+                                            }`}
+                                        >
+                        ${scores[player] || 0}
+                    </span>
+                                    </div>
+                                    {isHost && (
+                                        <div className="flex gap-2 ml-auto">
+                                            <button
+                                                onClick={() => handleScoreUpdate(player, -lastQuestionValue)}
+                                                className="w-8 h-8 p-0 bg-red-500 text-white rounded-full flex items-center justify-center text-sm hover:bg-red-600"
+                                            >
+                                                −
+                                            </button>
+                                            <button
+                                                onClick={() => handleScoreUpdate(player, lastQuestionValue)}
+                                                className="w-8 h-8 p-0 bg-green-500 text-white rounded-full flex items-center justify-center text-sm hover:bg-green-600"
+                                            >
+                                                ＋
+                                            </button>
+                                        </div>
+                                    )}
+                                </li>
+                            ))}
                     </ul>
                 </div>
             </div>
