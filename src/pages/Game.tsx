@@ -172,10 +172,8 @@ export default function Game() {
                     setDrawings(drawings);
                     console.log("All players have submitted their drawings.");
                 }
-
             };
         }
-
     }, [gameId, playerName, isHost, isSocketReady]);
 
     useEffect(() => {

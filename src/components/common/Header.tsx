@@ -1,5 +1,5 @@
 import React, {useState} from "react";
-import { Link, useNavigate } from "react-router-dom";
+import { Link } from "react-router-dom";
 import { useAuth } from "../../contexts/AuthContext.tsx";
 import { useProfile } from "../../contexts/ProfileContext.tsx";
 import LoginForm from "./LoginForm.tsx";
@@ -8,10 +8,9 @@ import {supabase} from "../../supabaseClient.ts";
 const Header: React.FC = () => {
     const [dropdownOpen, setDropdownOpen] = useState(false); // Profile dropdown state
     const [menuOpen, setMenuOpen] = useState(false); // Hamburger menu state
-    const navigate = useNavigate();
+    //const navigate = useNavigate();
     const { user } = useAuth();
     const { profile } = useProfile();
-
     // Toggle the profile dropdown if logged in.
     const toggleDropdown = () => setDropdownOpen(!dropdownOpen);
 
@@ -23,6 +22,7 @@ const Header: React.FC = () => {
         } else {
             console.log("Logged out successfully!");
         }
+
     };
 
     return (
