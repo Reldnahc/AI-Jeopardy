@@ -12,9 +12,3 @@ export interface Category {
     values: Clue[];   // Array of clues/questions within the category
 }
 
-/** Represents the board structure sent to clients */
-export interface BoardData {
-    firstBoard: Category[]; // Jeopardy first round categories/questions
-    secondBoard: Category[]; // Double Jeopardy categories/questions
-    finalJeopardy: Category[];
-}

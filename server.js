@@ -162,7 +162,7 @@ wss.on('connection', (ws) => {
                 type: 'trigger-loading',
             });
 
-            const boardData = await createBoardData(categories, selectedModel);
+            const boardData = await createBoardData(categories, selectedModel, host);
 
             console.log(boardData);
 
@@ -601,8 +601,8 @@ async function createCategoryOfTheDay() {
     console.log("Creating new Category of the day.");
     const prompt = `
         Create a category of the day.
-        The category should be a random trivia category.
-        It is okay to use slightly fringe material.
+        Think of as many trivia categories as you can. Randomly choose one of these categories.
+        Try not to choose the same category you have already chosen.
         create a description for the category.
         the description should be a short single sentence description of the category.
         it should be worded in a fun expressive and brief way.
@@ -621,7 +621,7 @@ async function createCategoryOfTheDay() {
     cotd = data;
 }
 
-async function createBoardData(categories, model = "gpt-4o-mini") {
+async function createBoardData(categories, model, host) {
     console.log("Beginning to create board data with categories: " + categories);
 
     if (!categories || categories.length !== 11) {
@@ -723,8 +723,6 @@ async function createBoardData(categories, model = "gpt-4o-mini") {
         let secondBoard;
         let finalJeopardy;
 
-        console.log(firstResponse);
-
         if (firstResponse.content && firstResponse.content[0]) {
             firstBoard = JSON.parse(firstResponse.content[0].text.replace(/```(?:json)?/g, "").trim());
             secondBoard = JSON.parse(secondResponse.content[0].text.replace(/```(?:json)?/g, "").trim());
@@ -734,6 +732,27 @@ async function createBoardData(categories, model = "gpt-4o-mini") {
             secondBoard = JSON.parse(secondResponse.choices[0].message.content.replace(/```(?:json)?/g, "").trim());
             finalJeopardy = JSON.parse(finalResponse.choices[0].message.content.replace(/```(?:json)?/g, "").trim());
         }
+
+
+        const board = {
+            host,
+            model,
+            firstBoard,
+            secondBoard,
+            finalJeopardy,
+        }
+
+        // Insert the board with the owner's ID
+        const { data, error } = await supabase
+            .from('jeopardy_boards')
+            .insert([{ board, owner: null }]);
+
+        if (error) {
+            console.error('[Server] Error saving board data:', error.message);
+        }
+
+        console.log('Jeopardy board saved successfully:', data);
+
 
         return {firstBoard, secondBoard, finalJeopardy};
     } catch (error) {

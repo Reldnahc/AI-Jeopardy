@@ -10,6 +10,7 @@ import {WebSocketProvider} from "./contexts/WebSocketContext.tsx";
 import { AuthProvider } from './contexts/AuthContext.tsx';
 import Profile from "./pages/Profile.tsx";
 import {ProfileProvider} from "./contexts/ProfileContext.tsx";
+import RecentBoards from "./pages/RecentBoards.tsx";
 ReactDOM.createRoot(document.getElementById('root')!).render(
     <React.StrictMode>
         <HashRouter>
@@ -22,6 +23,7 @@ ReactDOM.createRoot(document.getElementById('root')!).render(
                             <Route path="/lobby/:gameId" element={<Lobby />} />
                             <Route path="/game/:gameId" element={<Game />} />
                             <Route path="/profile/:username" element={<Profile />} />
+                            <Route path="/recent-boards" element={<RecentBoards />} />
                             {/* Add other routes for Game, etc., here */}
                         </Routes>
                     </WebSocketProvider>
