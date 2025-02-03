@@ -3,27 +3,63 @@ import 'dotenv/config';
 import OpenAI from "openai";
 import Anthropic from "@anthropic-ai/sdk";
 
+//ai calls
 const openai = new OpenAI();
 const anthropic = new Anthropic();
 const deepseek = new OpenAI({
     baseURL: 'https://api.deepseek.com',
     apiKey: process.env.DEEPSEEK_API_KEY
 });
-
+//websockets
 const WS_PORT = 3001;
+const PING_INTERVAL = 30000; //heartbeats
 const wss = new WebSocketServer({ port: WS_PORT, });
-
 console.log(`WebSocket server running on ws://localhost:${WS_PORT}`);
-const PING_INTERVAL = 30000;
+//express and supabase
+import express from "express"; // Import express
+import cors from "cors"; // Import cors
+import bodyParser from "body-parser"; // Import body-parser
+import { createClient } from "@supabase/supabase-js";
+const app = express(); // Initialize Express app
+app.use(cors());
+app.use(bodyParser.json());
+const supabase = createClient(
+    'https://ninlqlhpkxyckertjlyh.supabase.co', // Replace with your Supabase API URL
+    process.env.SUPABASE_KEY // Replace with your Supabase `service` role key for secure handling
+);
+
+const authenticateRequest = async (req, res, next) => {
+    const authHeader = req.headers.authorization;
+    if (!authHeader) {
+        return res.status(401).send("Unauthorized");
+    }
+
+    const token = authHeader.split(" ")[1];
+    const { data, error } = await supabase.auth.getUser(token);
+
+    if (error || !data) {
+        return res.status(401).send("Unauthorized");
+    }
+
+    req.user = data; // Attach the user to the request object
+    next();
+};
+
+// Example of a protected route
+app.get("/protected", authenticateRequest, (req, res) => {
+    res.send(`Hello, ${req.user.email}. This is a protected API!`);
+});
+
+app.listen(3002, () => console.log("Server running on http://localhost:3002"));
 
 // Store game state
 const games = {};
 
-let cotd = {
+let cotd =
+    {
     category: "Science & Nature",
     description: "Explore the wonders of the natural world and the marvels of modern science."
-
-}
+    };
 
 wss.on('connection', (ws) => {
     ws.id = Math.random().toString(36).substr(2, 9); // Assign a unique ID to each socket
@@ -33,7 +69,6 @@ wss.on('connection', (ws) => {
     ws.on('pong', () => {
         ws.isAlive = true; // Mark as healthy when a pong is received
     });
-
 
     ws.on('message', async (message) => {
         const data = JSON.parse(message);
@@ -104,6 +139,7 @@ wss.on('connection', (ws) => {
 
             // Log the updated player list for debugging
             console.log(`Players in game ${gameId}:`, games[gameId].players);
+            console.log(games[gameId].categories);
 
             ws.send(JSON.stringify({
                 type: 'lobby-state',
@@ -120,7 +156,7 @@ wss.on('connection', (ws) => {
         }
 
         if (data.type === 'create-game') {
-            const {gameId, categories, selectedModel} = data;
+            const {gameId, categories, selectedModel, players, host} = data;
 
             broadcast(gameId, {
                 type: 'trigger-loading',
@@ -129,7 +165,6 @@ wss.on('connection', (ws) => {
             const boardData = await createBoardData(categories, selectedModel);
 
             console.log(boardData);
-            // If the game already exists, reassign the host
 
             if (!games[gameId]) {
                 //error handle
@@ -142,11 +177,14 @@ wss.on('connection', (ws) => {
                 games[gameId].scores = {}; //this should default
                 games[gameId].inLobby = false;
 
-
+                console.log(games[gameId].players);
                 broadcast(gameId, {
                     type: 'start-game',
                     boardData: boardData,
+                    players: games[gameId].players.map((p) => p.name),
                 });
+            }else{
+                console.log("error moving from lobby to game. game already in progress.");
             }
 
         }
@@ -219,7 +257,6 @@ wss.on('connection', (ws) => {
                 // Determine all clues based on boardData
                 if (game.boardData) {
                     const {firstBoard, secondBoard, finalJeopardy} = game.boardData;
-
                     const clearCluesFromBoard = (board) => {
                         board.forEach(category => {
                             category.values.forEach(clue => {
@@ -230,12 +267,12 @@ wss.on('connection', (ws) => {
                     };
 
                     // Clear clues for the two main boards
-                    if (firstBoard) clearCluesFromBoard(firstBoard);
-                    if (secondBoard) clearCluesFromBoard(secondBoard);
+                    if (firstBoard) clearCluesFromBoard(firstBoard.categories);
+                    //if (secondBoard) clearCluesFromBoard(secondBoard.categories);
 
                     // Handle Final Jeopardy clue
-                    if (finalJeopardy && finalJeopardy.values && finalJeopardy.values[0]) {
-                        const finalClueId = `${finalJeopardy.values[0].question}`;
+                    if (finalJeopardy && finalJeopardy.categories.values && finalJeopardy.categories.values[0]) {
+                        const finalClueId = `${finalJeopardy.categories.values[0].question}`;
                         game.clearedClues.add(finalClueId);
                     }
 
@@ -305,10 +342,10 @@ wss.on('connection', (ws) => {
                 return;
             }
 
-            if (games[gameId].host !== playerName && !games[gameId].players.includes(playerName)) {
+            if (!games[gameId].players.includes(playerName)) {
                 games[gameId].players.push({ id: ws.id, name: playerName });
             }
-
+            console.log(games[gameId].players);
             // Log the updated player list for debugging
             console.log(`Players in game ${gameId}:`, games[gameId].players);
             // Notify the new player of the current game state (buzz result, buzzer status, board, and selected clue if any)
@@ -418,7 +455,7 @@ wss.on('connection', (ws) => {
                 // Update score
                 const game = games[gameId];
                 game.scores[player] = (game.scores[player] || 0) + delta;
-
+                console.log(game.scores);
                 // Broadcast updated scores
                 broadcast(gameId, {
                     type: 'update-scores',
@@ -443,12 +480,14 @@ wss.on('connection', (ws) => {
                 });
 
                 // Check if all wagers are submitted
-                const allSubmitted =
-                    (games[gameId].players.length > 0 &&
-                        Object.keys(games[gameId].wagers).length ===
-                        games[gameId].players.length) ||
-                    (games[gameId].players.length === 0 &&
-                        Object.keys(games[gameId].wagers).includes("host"));
+                let expectedWagers;
+                if (games[gameId].players.length === 1){
+                    expectedWagers = games[gameId].players.length;
+                } else {
+                    expectedWagers = games[gameId].players.length - 1;
+                }
+
+                const allSubmitted = Object.keys(games[gameId].wagers).length === expectedWagers;
 
                 if (allSubmitted) {
                     broadcast(gameId, {type: "all-wagers-submitted", wagers: games[gameId].wagers});
@@ -487,17 +526,14 @@ wss.on('connection', (ws) => {
                 // Store the player's drawing as an object
                 games[gameId].drawings[player] = parsedDrawing;
 
-
                 // Broadcast that the player's drawing is submitted
                 broadcast(gameId, {
                     type: 'final-jeopardy-drawing-submitted',
                     player,
                 });
 
-                // Check if all players have submitted their drawings
-                const allPlayersSubmitted =
-                    Object.keys(games[gameId].drawings).length === games[gameId].players.length ||
-                    (games[gameId].players.length === 0 && games[gameId].drawings["host"]);
+                const expectedSubmissions = games[gameId].players.length === 1 ? games[gameId].players.length : games[gameId].players.length - 1;
+                const allPlayersSubmitted = Object.keys(games[gameId].drawings).length === expectedSubmissions;
 
                 if (allPlayersSubmitted) {
                     broadcast(gameId, {
@@ -678,7 +714,7 @@ async function createBoardData(categories, model = "gpt-4o-mini") {
         }
 
         const firstBoardPromise = apiCall(model, prompt(firstCategories));
-        const secondBoardPromise = apiCall(model, prompt(secondCategories));
+        const secondBoardPromise = apiCall(model, prompt(secondCategories, true));
         const finalBoardPromise = apiCall(model, finalPrompt(finalCategory));
 
         const [firstResponse, secondResponse, finalResponse] = await Promise.all([firstBoardPromise, secondBoardPromise, finalBoardPromise]);

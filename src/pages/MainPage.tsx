@@ -2,27 +2,29 @@ import { useEffect, useMemo, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useWebSocket } from "../contexts/WebSocketContext.tsx";
 import randomCategoryList from "../data/randomCategories.ts";
+import {useAuth} from "../contexts/AuthContext.tsx";
+import {useProfile} from "../contexts/ProfileContext.tsx";
 
 export default function MainPage() {
-    const [playerName, setPlayerName] = useState(() => {
-        // Retrieve playerName from sessionStorage if available
-        return sessionStorage.getItem('playerName') || '';
-    });
+    const [playerName, setPlayerName] = useState('');
     const [gameId, setGameId] = useState('');
     const [cotd, setCotd] = useState({
         category: "Science & Nature",
         description: "Explore the wonders of the natural world and the marvels of modern science."
     });
 
+    const { user } = useAuth();
+    const { profile } = useProfile();
     const { socket, isSocketReady } = useWebSocket();
     const navigate = useNavigate();
 
     const adjectives = [
-        "Artificially Hallucinating",
-        "Artificially Intelligent",
-        "Artificially Dreaming",
-        "Artificially Generated",
-        "Artificially Conjured",
+        "Hallucinated",
+        "Intelligent",
+        "Dreamt",
+        "Generated",
+        "Conjured",
+        "Created",
     ];
 
     const randomAdjective = useMemo(
@@ -31,8 +33,16 @@ export default function MainPage() {
     );
 
     useEffect(() => {
-        sessionStorage.setItem('playerName', playerName);
-    }, [playerName]);
+        const fetchUsername = async () => {
+            if (user && profile) {
+                setPlayerName(profile.username);
+            } else {
+                setPlayerName("");
+            }
+        };
+
+        fetchUsername();
+    }, [user, profile]);
 
     useEffect(() => {
         if (socket && isSocketReady) {
@@ -57,6 +67,8 @@ export default function MainPage() {
         return shuffledCategories.slice(0, 11);
     };
 
+
+
     function sendErrorAlert() {
         alert(
             'Connection to Websockets failed. If you are using an adblocker please disable it and refresh the page. Otherwise try again later.'
@@ -64,14 +76,13 @@ export default function MainPage() {
     }
 
     const handleCreateGame = async () => {
-        if (!playerName.trim()) {
-            alert('Please enter your name.');
+        if (!user) {
+            alert('Please log in to create a game.');
             return;
         }
         if (socket && isSocketReady) {
             const newGameId = Math.random().toString(36).substr(2, 8).toUpperCase();
-            localStorage.setItem('gameId', newGameId);
-            localStorage.setItem('playerName', playerName);
+
             socket.send(
                 JSON.stringify({
                     type: 'create-lobby',
@@ -82,7 +93,7 @@ export default function MainPage() {
             );
             navigate(`/lobby/${newGameId}`, {
                 state: {
-                    playerName: playerName.trim(),
+                    playerName: playerName,
                     isHost: true,
                 },
             });
@@ -92,13 +103,15 @@ export default function MainPage() {
     };
 
     const handleJoinGame = () => {
-        if (!playerName.trim() || !gameId.trim()) {
-            alert('Please enter your name and a valid game ID.');
+        if (!user) {
+            alert('Please log in to create a game.');
+            return;
+        }
+        if (!gameId.trim()) {
+            alert('Please a valid game ID.');
             return;
         }
         if (socket && isSocketReady) {
-            localStorage.setItem('gameId', gameId);
-            localStorage.setItem('playerName', playerName);
             socket.send(
                 JSON.stringify({
                     type: 'join-lobby',
@@ -127,7 +140,7 @@ export default function MainPage() {
                     <div className="flex-1">
                         <div className="p-8 font-sans">
                             <h1 className="text-3xl md:text-4xl font-bold mb-4 text-center">
-                                {randomAdjective} Jeopardy
+                                Artificially {randomAdjective} Jeopardy
                             </h1>
                             <h2 className="text-xl md:text-2xl mb-10 text-center">
                                 Try to answer with the correct question.
@@ -149,32 +162,15 @@ export default function MainPage() {
                             {/* Container for the Create and Join boxes */}
                             <div className="flex flex-col md:flex-row gap-6">
                                 {/* Create Game Box */}
-                                <div className="flex flex-col w-full md:flex-1 bg-[#AAA] p-6 border border-[#ddd] rounded-lg shadow-md">
-                                    <h3 className="text-xl mb-4 text-center md:text-left">
-                                        Create a Game
-                                    </h3>
-                                    <div className="flex flex-col gap-4">
-                                        <div className="flex flex-col gap-2">
-                                            <label htmlFor="createPlayerName" className="text-lg font-bold">
-                                                Player Name:
-                                            </label>
-                                            <input
-                                                id="createPlayerName"
-                                                type="text"
-                                                value={playerName}
-                                                onChange={(e) => setPlayerName(e.target.value)}
-                                                placeholder="Enter your name"
-                                                className="text-lg p-3 rounded border border-gray-300"
-                                            />
-                                        </div>
+
+
                                         <button
                                             onClick={handleCreateGame}
-                                            className="text-lg py-3 px-6 bg-blue-500 text-white border-0 rounded cursor-pointer"
+                                            className="text-lg py-3 px-6 bg-blue-500 text-white border-0 rounded cursor-pointer w-3/5 shadow-md"
                                         >
                                             Create Game
                                         </button>
-                                    </div>
-                                </div>
+
 
                                 {/* Join Game Box */}
                                 <div className="flex flex-col w-full md:flex-1 bg-[#AAA] p-6 border border-[#ddd] rounded-lg shadow-md">
@@ -183,17 +179,6 @@ export default function MainPage() {
                                     </h3>
                                     <div className="flex flex-col gap-4">
                                         <div className="flex flex-col gap-2">
-                                            <label htmlFor="joinPlayerName" className="text-lg font-bold">
-                                                Player Name:
-                                            </label>
-                                            <input
-                                                id="joinPlayerName"
-                                                type="text"
-                                                value={playerName}
-                                                onChange={(e) => setPlayerName(e.target.value)}
-                                                placeholder="Enter your name"
-                                                className="text-lg p-3 rounded border border-gray-300"
-                                            />
                                         </div>
                                         <div className="flex flex-col gap-2">
                                             <label htmlFor="gameId" className="text-lg font-bold">

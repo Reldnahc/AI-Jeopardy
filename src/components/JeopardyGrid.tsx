@@ -18,30 +18,20 @@ const JeopardyGrid: React.FC<JeopardyGridProps> = ({
                                                    }) => {
     return (
         <div
+            className={`grid gap-2 w-[98%] h-[98%] mt-2`}
             style={{
-                display: "grid",
                 gridTemplateColumns: `repeat(${boardData.length}, 1fr)`,
-                gridTemplateRows: `60px repeat(5, 1fr)`,
-                gap: "10px",
-                width: "98%",
-                height: "98%",
+                gridTemplateRows: `repeat(6, 1fr)`, // Updated to have all rows including headers be equal height
             }}
         >
-            {/* Render Category Headers */}
+            {/* Render Category Headers (Styled same as clues but non-clickable) */}
             {boardData.map((category, colIndex) => (
                 <div
                     key={colIndex}
+                    className={`flex justify-center items-center border-2 border-black text-center h-full text-4xl bg-indigo-600 cursor-not-allowed`}
                     style={{
-                        display: "flex",
-                        marginTop: "10px",
-                        justifyContent: "center",
-                        alignItems: "center",
-                        border: "2px solid #000",
-                        backgroundColor: "#FFA500",
-                        fontWeight: "bold",
-                        textAlign: "center",
-                        height: "100%", // Fill the category row height (60px)
-                        fontSize: "1.5rem",
+                        pointerEvents: "none", // Disable all pointer interactions for category headers
+                        gridColumn: colIndex + 1,
                     }}
                 >
                     {category.category}
@@ -57,18 +47,12 @@ const JeopardyGrid: React.FC<JeopardyGridProps> = ({
                     return (
                         <div
                             key={`${colIndex}-${rowIndex}`}
+                            className={`flex justify-center items-center border-2 border-black text-center h-full text-3xl text-yellow-500 ${
+                                isCleared ? "bg-gray-300" : "bg-indigo-600"
+                            } ${isHost && !isCleared ? "cursor-pointer" : "cursor-not-allowed"}`}
                             style={{
-                                display: "flex",
-                                justifyContent: "center",
-                                alignItems: "center",
-                                border: "2px solid #000",
-                                backgroundColor: isCleared ? "#d3d3d3" : "#FFD700",
-                                textAlign: "center",
-                                height: "100%",
-                                fontSize: "2rem",
-                                cursor: isHost && !isCleared ? "pointer" : "not-allowed",
-                                gridColumn: colIndex + 1,
-                                gridRow: rowIndex + 2,
+                                gridColumn: colIndex + 1, // Tailwind won't dynamically handle grid columns/rows.
+                                gridRow: rowIndex + 2, // Clues always start from the 2nd row
                             }}
                             onClick={() => handleClueClick(clue, clueId)}
                         >

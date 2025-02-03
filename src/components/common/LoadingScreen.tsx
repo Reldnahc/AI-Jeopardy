@@ -7,33 +7,14 @@ interface LoadingScreenProps {
 
 const LoadingScreen: React.FC<LoadingScreenProps> = ({ message, loadingDots }) => {
     return (
-        <div
-            style={{
-                display: 'flex',
-                flexDirection: 'column',
-                alignItems: 'center',
-                justifyContent: 'center',
-                height: '100vh',
-                width: '100vw',
-                backgroundColor: '#222',
-                color: 'white',
-                textAlign: 'center',
-            }}
-        >
-            <div className="spinner" style={{ marginBottom: '20px' }}></div>
-            <h1 style={{ display: 'flex', alignItems: 'center' }}>
+        <div className="flex flex-col items-center justify-center h-[calc(100vh-4.5rem)] w-screen bg-gray-900 text-white text-center">
+            <div className="spinner mb-5"></div>
+            <h1 className="flex items-center text-5xl">
                 {message || 'Loading'}
-                <span
-                    style={{
-                        display: 'inline-block',
-                        width: '3ch',
-                        textAlign: 'left',
-                    }}
-                >
-                    {loadingDots}
-                </span>
+                <span className="inline-block w-[3ch] text-left">{loadingDots}</span>
             </h1>
         </div>
     );
 };
+
 export default LoadingScreen;

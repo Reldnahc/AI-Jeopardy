@@ -53,7 +53,7 @@ const JeopardyBoard: React.FC<JeopardyBoardProps> =
 
     useEffect(() => {
         if (selectedClue) {
-            const isOnlyPersonPlaying = players.length === 0;
+            const isOnlyPersonPlaying = players.length === 1 && isHost;
             setLocalSelectedClue(selectedClue);
             setShowClue(true);
 
@@ -86,6 +86,9 @@ const JeopardyBoard: React.FC<JeopardyBoardProps> =
         if (wagers[player] === undefined) {
             wagers[player] = 0;
         }
+        console.log(scores);
+        console.log(player);
+        console.log(scores[player]);
         if (wagers[player] !== undefined && wagers[player] <= (scores[player] || 0)) {
             setWagerSubmitted((prev) => [...prev, player]);
 
@@ -110,79 +113,63 @@ const JeopardyBoard: React.FC<JeopardyBoardProps> =
         return <p>No board data available.</p>; // Handle invalid board data
     }
 
-    return (
-        <div
-            style={{
-                position: 'relative',
-                width: '100%',
-                height: '100%', // Fill vertically
-                margin: '0', // Remove margins
-                overflow: 'hidden',
-            }}
+        return (
+            <div
+                className="relative w-full h-full m-0 overflow-hidden"
+            >
+                {isFinalJeopardy && !allWagersSubmitted && (
+                    <div
+                        className="flex flex-col items-center justify-center w-full h-full bg-gray-800 text-white"
+                    >
+                        <h2 className="text-2xl">Final Jeopardy Category:</h2>
+                        <h1 className="text-6xl">{boardData[0].category}</h1>
 
-        >
+                        <h2 className="text-2xl">Place Your Wager!</h2>
+                        <WagerInput
+                            players={players}
+                            currentPlayer={currentPlayer}
+                            isHost={isHost}
+                            scores={scores}
+                            wagers={wagers}
+                            wagerSubmitted={wagerSubmitted}
+                            handleWagerChange={handleWagerChange}
+                            submitWager={submitWager}
+                        />
+                    </div>
+                )}
 
-            {isFinalJeopardy && !allWagersSubmitted && (
-                <div
-                    style={{
-                        display: "flex",
-                        flexDirection: "column",
-                        alignItems: "center",
-                        justifyContent: "center",
-                        width: "100%",
-                        height: "100%",
-                        backgroundColor: "#222",
-                        color: "#fff",
-                    }}
-                >
-                    <h2>Final Jeopardy Category:</h2>
-                    <h1 style={{fontSize: '6rem'}}>{boardData[0].category}</h1>
-
-                    <h2>Place Your Wager!</h2>
-                    <WagerInput
-                        players={players}
-                        currentPlayer={currentPlayer}
+                {/* Jeopardy Board */}
+                {!showClue && !isFinalJeopardy && (
+                    <JeopardyGrid
+                        boardData={boardData}
                         isHost={isHost}
-                        scores={scores}
-                        wagers={wagers}
-                        wagerSubmitted={wagerSubmitted}
-                        handleWagerChange={handleWagerChange}
-                        submitWager={submitWager}
+                        clearedClues={clearedClues}
+                        handleClueClick={handleClueClick}
+                        isFinalJeopardy={isFinalJeopardy}
                     />
-                </div>
-            )}
+                )}
 
-            {/* Jeopardy Board */}
-            {!showClue && !isFinalJeopardy && (
-                <JeopardyGrid
-                    boardData={boardData}
-                    isHost={isHost}
-                    clearedClues={clearedClues}
-                    handleClueClick={handleClueClick}
-                    isFinalJeopardy={isFinalJeopardy}
-                />
-            )}
-
-            {/* Display Selected Clue */}
-            {showClue && localSelectedClue && (
-                <SelectedClueDisplay
-                    localSelectedClue={localSelectedClue}
-                    showAnswer={showAnswer}
-                    setShowAnswer={setShowAnswer}
-                    setShowClue={setShowClue}
-                    isHost={isHost}
-                    isFinalJeopardy={isFinalJeopardy}
-                    gameId={gameId}
-                    currentPlayer={currentPlayer}
-                    canvasRef={canvasRef}
-                    drawings={drawings}
-                    drawingSubmitted={drawingSubmitted}
-                    setDrawingSubmitted={setDrawingSubmitted}
-                    hostCanSeeAnswer={hostCanSeeAnswer}
-                />
-            )}
-        </div>
-    );
+                {/* Display Selected Clue */}
+                {showClue && localSelectedClue && (
+                    <SelectedClueDisplay
+                        localSelectedClue={localSelectedClue}
+                        showAnswer={showAnswer}
+                        setShowAnswer={setShowAnswer}
+                        setShowClue={setShowClue}
+                        isHost={isHost}
+                        isFinalJeopardy={isFinalJeopardy}
+                        gameId={gameId}
+                        currentPlayer={currentPlayer}
+                        canvasRef={canvasRef}
+                        drawings={drawings}
+                        drawingSubmitted={drawingSubmitted}
+                        setDrawingSubmitted={setDrawingSubmitted}
+                        hostCanSeeAnswer={hostCanSeeAnswer}
+                        players={players}
+                    />
+                )}
+            </div>
+        );
 };
 
 export default JeopardyBoard;

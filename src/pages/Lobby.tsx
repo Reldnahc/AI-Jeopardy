@@ -1,11 +1,12 @@
-import React, {useEffect, useState} from 'react';
+import React, { useEffect, useState } from 'react';
 import randomCategoryList from '../data/randomCategories';
-import {useLocation, useNavigate, useParams} from "react-router-dom";
-import {useWebSocket} from "../contexts/WebSocketContext.tsx";
+import { useLocation, useNavigate, useParams } from "react-router-dom";
+import { useWebSocket } from "../contexts/WebSocketContext.tsx";
 import LobbySidebar from "../components/LobbySidebar.tsx";
 import LoadingScreen from "../components/common/LoadingScreen.tsx";
-import CategoryBoardContainer from "../components/lobby/CategoryBoardContainer.tsx";
 import HostControls from "../components/lobby/HostControls.tsx";
+import FinalJeopardyCategory from "../components/lobby/FinalJeopardyCategory.tsx";
+import CategoryBoard from "../components/lobby/CategoryBoard.tsx";
 
 const Lobby: React.FC = () => {
     const location = useLocation();
@@ -18,10 +19,10 @@ const Lobby: React.FC = () => {
         firstBoard: ['', '', '', '', ''],
         secondBoard: ['', '', '', '', ''],
         finalJeopardy: '',
-});
+    });
     const isHost = location.state?.isHost || false;
     const playerName = location.state?.playerName || 'Spectator';
-    const {gameId} = useParams<{ gameId: string }>();
+    const { gameId } = useParams<{ gameId: string }>();
     const [isLoading, setIsLoading] = useState(false);
     const [loadingMessage, setLoadingMessage] = useState('');
     const [loadingDots, setLoadingDots] = useState('');
@@ -29,12 +30,17 @@ const Lobby: React.FC = () => {
     const [players, setPlayers] = useState<string[]>([]);
     const [host, setHost] = useState<string | null>(null);
     const [selectedModel, setSelectedModel] = useState('gpt-4o-mini'); // Default value for dropdown
+    const [sidebarOpen, setSidebarOpen] = useState(false); // Manage sidebar open/close
 
     const { socket, isSocketReady } = useWebSocket();
     const navigate = useNavigate();
 
     useEffect(() => {
-        if (socket && isSocketReady){
+        console.log('checking socket');
+        console.log(socket);
+        console.log(isSocketReady);
+
+        if (socket && isSocketReady) {
             socket.onmessage = (event) => {
                 const message = JSON.parse(event.data);
                 console.log(message);
@@ -65,14 +71,6 @@ const Lobby: React.FC = () => {
                     });
                 }
 
-                if (message.type === 'categories-updated') {
-                    setCategories({
-                        firstBoard: message.categories.slice(0, 5),
-                        secondBoard: message.categories.slice(5, 10),
-                        finalJeopardy: message.categories[10],
-                    });
-                }
-
                 if (message.type === 'trigger-loading') {
                     setIsLoading(true);
                     setLoadingMessage('Generating your questions');
@@ -84,7 +82,7 @@ const Lobby: React.FC = () => {
                         JSON.stringify({
                             type: 'join-game',
                             gameId,
-                            playerName
+                            playerName,
                         })
                     );
                     console.log(message.boardData.firstBoard);
@@ -93,6 +91,7 @@ const Lobby: React.FC = () => {
                             playerName: playerName.trim(),
                             isHost: isHost,
                             boardData: message.boardData,
+                            players: message.players,
                         },
                     });
                 }
@@ -114,7 +113,7 @@ const Lobby: React.FC = () => {
             );
             setIsLoading(true);
         }
-    }, [socket, gameId]);
+    }, [isSocketReady, gameId]);
 
     useEffect(() => {
         if (isLoading) {
@@ -125,8 +124,8 @@ const Lobby: React.FC = () => {
             // Start an interval to loop through the dots pattern
             const interval = setInterval(() => {
                 setLoadingDots(dotsPattern[currentIndex]);
-                currentIndex = (currentIndex + 1) % dotsPattern.length; // Cycle through the array
-            }, 750); // Update every 500ms
+                currentIndex = (currentIndex + 1) % dotsPattern.length;
+            }, 750);
 
             // Cleanup interval when loading stops
             return () => clearInterval(interval);
@@ -134,7 +133,7 @@ const Lobby: React.FC = () => {
     }, [isLoading]);
 
     const handleDropdownChange = (e: React.ChangeEvent<HTMLSelectElement>) => {
-        setSelectedModel(e.target.value); // Update state with the selected value
+        setSelectedModel(e.target.value);
     };
 
     const onChangeCategory = (
@@ -142,17 +141,15 @@ const Lobby: React.FC = () => {
         index: number | undefined,
         value: string
     ) => {
-        if (!isHost) return; // Only allow the host to update categories
+        if (!isHost) return;
 
         setCategories((prev) => {
-            // Handle finalJeopardy case separately
             if (boardType === 'finalJeopardy') {
                 const updatedCategories = {
                     ...prev,
-                    finalJeopardy: value, // Update the final jeopardy value
+                    finalJeopardy: value,
                 };
 
-                // Notify the server of the changes
                 if (socket && isSocketReady) {
                     socket.send(
                         JSON.stringify({
@@ -171,7 +168,6 @@ const Lobby: React.FC = () => {
                 return updatedCategories;
             }
 
-            // Otherwise, handle firstBoard or secondBoard
             const updatedBoard = [...prev[boardType]];
             if (index !== undefined) {
                 updatedBoard[index] = value;
@@ -182,7 +178,6 @@ const Lobby: React.FC = () => {
                 [boardType]: updatedBoard,
             };
 
-            // Notify the server of the changes
             if (socket && isSocketReady) {
                 socket.send(
                     JSON.stringify({
@@ -212,7 +207,8 @@ const Lobby: React.FC = () => {
             if (boardType === 'finalJeopardy') {
                 let newCategory;
                 do {
-                    newCategory = randomCategoryList[Math.floor(Math.random() * randomCategoryList.length)];
+                    newCategory =
+                        randomCategoryList[Math.floor(Math.random() * randomCategoryList.length)];
                 } while (
                     prev.firstBoard.includes(newCategory) ||
                     prev.secondBoard.includes(newCategory) ||
@@ -223,7 +219,8 @@ const Lobby: React.FC = () => {
                 const board = [...updatedCategories[boardType]];
                 let newCategory;
                 do {
-                    newCategory = randomCategoryList[Math.floor(Math.random() * randomCategoryList.length)];
+                    newCategory =
+                        randomCategoryList[Math.floor(Math.random() * randomCategoryList.length)];
                 } while (
                     board.includes(newCategory) ||
                     prev.firstBoard.includes(newCategory) ||
@@ -233,7 +230,6 @@ const Lobby: React.FC = () => {
                 updatedCategories[boardType] = board;
             }
 
-            // Notify the server of the changes only if the player is the host
             if (isHost && socket && isSocketReady) {
                 socket.send(
                     JSON.stringify({
@@ -253,56 +249,61 @@ const Lobby: React.FC = () => {
         });
     };
 
-
     const handleCreateGame = async () => {
         if (!playerName.trim()) {
             alert('Please enter your name.');
             return;
         }
-        // Validation for all categories
-        if (categories.firstBoard.some((c) => !c.trim()) || categories.secondBoard.some((c) => !c.trim())) {
+        if (
+            categories.firstBoard.some((c) => !c.trim()) ||
+            categories.secondBoard.some((c) => !c.trim())
+        ) {
             alert('Please fill in all categories for both boards.');
             return;
         }
 
         try {
-            setIsLoading(true); // Show the loading screen
+            setIsLoading(true);
             setLoadingMessage('Generating your questions');
 
-            if (socket && isSocketReady){
-                socket.send(JSON.stringify({
-                    type: 'create-game',
-                    gameId,
-                    host: playerName,
-                    players,
-                    categories: [...categories.firstBoard, ...categories.secondBoard, categories.finalJeopardy],
-                    selectedModel
-                }));
+            if (socket && isSocketReady) {
+                socket.send(
+                    JSON.stringify({
+                        type: 'create-game',
+                        gameId,
+                        host: playerName,
+                        players,
+                        categories: [
+                            ...categories.firstBoard,
+                            ...categories.secondBoard,
+                            categories.finalJeopardy,
+                        ],
+                        selectedModel,
+                    })
+                );
             }
-
         } catch (error) {
             console.error('Failed to generate board data:', error);
             alert('Failed to generate board data. Please try again.');
         }
     };
 
+    // Toggle sidebar state
+    const toggleSidebar = () => {
+        setSidebarOpen((prev) => !prev);
+    };
+
     return isLoading ? (
         <LoadingScreen message={loadingMessage} loadingDots={loadingDots} />
     ) : (
-        <>
+        <div className="flex flex-col md:flex-row h-[calc(100vh-4.5rem)] w-screen overflow-hidden bg-gradient-to-br from-[#2e3a59] to-[#1c2538]">
+            {/* Sidebar Container */}
             <div
-                style={{
-                    display: 'flex',
-                    flexDirection: 'row',
-                    flexWrap: 'wrap',
-                    justifyContent: 'space-between',
-                    height: '100vh',
-                    width: '100vw',
-                    overflow: 'hidden',
-                    padding: '10px',
-                    boxSizing: 'border-box',
-                    background: 'linear-gradient(135deg, #2e3a59, #1c2538)',
-                }}
+                className={`
+          fixed top-0 left-0 z-40 w-64 h-full bg-[#1c2538] shadow-lg transform transition-transform duration-300 ease-in-out 
+          ${sidebarOpen ? 'translate-x-0' : '-translate-x-full'} 
+          md:static md:translate-x-0
+        `}
             >
                 <LobbySidebar
                     gameId={gameId}
@@ -312,35 +313,84 @@ const Lobby: React.FC = () => {
                     copySuccess={copySuccess}
                     setCopySuccess={setCopySuccess}
                 />
+            </div>
 
+            {/* Backdrop overlay (only on mobile when sidebar is open) */}
+            {sidebarOpen && (
                 <div
-                    style={{
-                        flex: 1,
-                        display: 'flex',
-                        flexDirection: 'column',
-                        height: '100%',
-                        backgroundColor: '#2e3a59',
-                        padding: '20px',
-                    }}
+                    className="fixed inset-0 z-30 bg-black opacity-50 md:hidden"
+                    onClick={toggleSidebar}
+                ></div>
+            )}
+
+            {/* Main Content */}
+            <div className="flex flex-col flex-1 bg-[#2e3a59] p-5 relative overflow-y-auto">
+                {/* Mobile Toggle Button */}
+                <button
+                    onClick={toggleSidebar}
+                    className="absolute top-0 -left-2 md:hidden -rotate-90 p-2 bg-gray-700 text-white rounded focus:outline-none max-w-20"
                 >
-                    <CategoryBoardContainer
-                        categories={categories}
+                    <svg
+                        xmlns="http://www.w3.org/2000/svg"
+                        className="h-4 w-4 ml-2"
+                        fill="none"
+                        viewBox="0 0 24 24"
+                        stroke="currentColor"
+                    >
+                        <path
+                            strokeLinecap="round"
+                            strokeLinejoin="round"
+                            strokeWidth={2}
+                            d="M19 9l-7 7-7-7"
+                        />
+                    </svg>
+                </button>
+
+                {/* Wrap board in a flex-grow container */}
+                <div className="flex flex-wrap gap-2 justify-around w-full">
+                    {/* First Board */}
+                    <CategoryBoard
+                        title="Jeopardy!"
+                        categories={categories.firstBoard}
                         isHost={isHost}
+                        boardType="firstBoard"
                         onChangeCategory={onChangeCategory}
                         onRandomizeCategory={handleRandomizeCategory}
                     />
+                    {/* Second Board */}
+                    <CategoryBoard
+                        title="Double Jeopardy!"
+                        categories={categories.secondBoard}
+                        isHost={isHost}
+                        boardType="secondBoard"
+                        onChangeCategory={onChangeCategory}
+                        onRandomizeCategory={handleRandomizeCategory}
+                    />
+                </div>
 
-                    {/* Create Game Button */}
-                    {isHost && ( // Render the button only if the player is the host
+                {/* Final Jeopardy Section */}
+                <div className="mt-4" >
+                    <FinalJeopardyCategory
+                        category={categories.finalJeopardy}
+                        isHost={isHost}
+                        onChangeCategory={onChangeCategory}
+                        onRandomizeCategory={handleRandomizeCategory} // Only needs board type
+                    />
+                </div>
+
+
+                {/* Host Controls always visible at the bottom */}
+                {isHost && (
+                    <div className="mt-4">
                         <HostControls
                             selectedModel={selectedModel}
                             onModelChange={handleDropdownChange}
                             onCreateGame={handleCreateGame}
                         />
-                    )}
-                </div>
+                    </div>
+                )}
             </div>
-        </>
+        </div>
     );
 };
 

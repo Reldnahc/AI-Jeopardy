@@ -13,7 +13,7 @@ export default function Game() {
     const playerName = location.state?.playerName || 'Spectator';
     const [host, setHost] = useState<string | null>(null);
     const isHost = location.state?.isHost || false;
-    const [players, setPlayers] = useState<string[]>([]);
+    const [players, setPlayers] = useState<string[]>(location.state?.players || []);
     const [buzzResult, setBuzzResult] = useState<string | null>(null);
     const [isBuzzed, setIsBuzzed] = useState(false);
     const [selectedClue, setSelectedClue] = useState<Clue | null>(null);
@@ -176,7 +176,7 @@ export default function Game() {
             };
         }
 
-    }, [gameId, playerName, isHost, socket]);
+    }, [gameId, playerName, isHost, isSocketReady]);
 
     useEffect(() => {
         if (socket && isSocketReady) {
@@ -224,7 +224,7 @@ export default function Game() {
             }
 
         }
-    }, [clearedClues, gameId, activeBoard]); // Run only when clearedClues or gameId changes
+    }, [clearedClues, gameId, activeBoard, isSocketReady]); // Run only when clearedClues or gameId changes
 
     const updateClearedClues = (newClearedClues: string[]) => {
         setClearedClues((prev) => {
@@ -235,7 +235,7 @@ export default function Game() {
     };
 
     const handleScoreUpdate = (player: string, delta: number) => {
-        if (isFinalJeopardy){
+        if (isFinalJeopardy && allWagersSubmitted){
             delta = wagers[player];//TODO fix negative final jeopardy wagers
         }
         const newScores = {...scores, [player]: (scores[player] || 0) + delta};
@@ -318,16 +318,9 @@ export default function Game() {
 
     return (
         <div
-            style={{
-                display: 'flex', // Flex layout for sidebar and Jeopardy board
-                height: '100vh', // Full viewport height
-                width: '100vw', // Full viewport width
-                overflow: 'hidden', // No scrolling allowed
-                fontFamily: 'Arial, sans-serif',
-                background: 'linear-gradient(135deg, #2e3a59, #1c2538)',
-
-            }}
+            className="flex h-[calc(100vh-4.5rem)] w-screen overflow-hidden font-sans bg-gradient-to-br from-[#2e3a59] to-[#1c2538]"
         >
+            {/* Sidebar */}
             <Sidebar
                 gameId={gameId}
                 isHost={isHost}
@@ -352,22 +345,15 @@ export default function Game() {
                 handleBuzz={handleBuzz}
             />
 
-
             {/* Jeopardy Board Section */}
             <div
-                style={{
-                    flex: 1, // Take up the remaining space
-                    display: 'flex',
-                    justifyContent: 'center',
-                    alignItems: 'center',
-                    overflow: 'hidden', // Prevent scrolling issues for board
-                    padding: '0px', // Add some space around the board
-                }}
+                className="flex flex-1 justify-center items-center overflow-hidden p-0"
             >
                 {isGameOver ? (
                     <FinalScoreScreen scores={scores} />
                 ) : (
-                    <>{/* Jeopardy Board */}
+                    <>
+                        {/* Jeopardy Board */}
                         <JeopardyBoard
                             boardData={boardData[activeBoard].categories}
                             isHost={isHost}

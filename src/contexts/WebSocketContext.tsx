@@ -1,4 +1,5 @@
 import React, { createContext, useContext, useRef, useEffect, useState } from "react";
+import {useProfile} from "./ProfileContext.tsx";
 
 interface WebSocketContextType {
     socket: WebSocket | null;
@@ -12,9 +13,11 @@ const WebSocketContext = createContext<WebSocketContextType | null>(null);
 export const WebSocketProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
     const socketRef = useRef<WebSocket | null>(null);
     const [isSocketReady, setIsSocketReady] = useState(false);
+    const { profile } = useProfile();
 
     useEffect(() => {
-        if (!socketRef.current) {
+        if (!profile) return;
+        if (!socketRef.current ) {
             // Initialize WebSocket connection
             //socketRef.current = new WebSocket("wss://reldnahc.duckdns.org");
             socketRef.current = new WebSocket("ws://localhost:3001");
@@ -26,8 +29,12 @@ export const WebSocketProvider: React.FC<{ children: React.ReactNode }> = ({ chi
                 const currentPage = location.hash;
                 console.log("Current page:", currentPage);
 
-                const gameId = localStorage.getItem("gameId"); // Persist game ID in localStorage
-                const playerName = localStorage.getItem("playerName"); // Persist player name in localStorage
+                const gameId = currentPage.split('/')[2];
+                let playerName = '';
+                if (profile) {
+                     playerName = profile.username;
+                }
+
 
                 const action = currentPage.includes('/lobby') ? 'join-lobby' :
                     currentPage.includes('/game') ? 'join-game' : null;
@@ -56,7 +63,7 @@ export const WebSocketProvider: React.FC<{ children: React.ReactNode }> = ({ chi
             console.log("WebSocket initialized:", socketRef.current);
         }
 
-    }, []);
+    }, [profile]);
 
     return (
         <WebSocketContext.Provider value={{ socket: socketRef.current, isSocketReady }}>

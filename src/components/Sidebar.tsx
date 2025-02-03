@@ -1,6 +1,7 @@
 import React from "react";
 import { Clue } from "../types";
 import {useWebSocket} from "../contexts/WebSocketContext.tsx";
+import {useProfile} from "../contexts/ProfileContext.tsx";
 
 interface SidebarProps {
     gameId: string | undefined;
@@ -51,7 +52,7 @@ const Sidebar: React.FC<SidebarProps> = ({
                                          }) => {
 
     const { socket, isSocketReady } = useWebSocket();
-
+    const { profile } = useProfile();
 
     const copyGameIdToClipboard = () => {
         if (gameId) {
@@ -62,200 +63,73 @@ const Sidebar: React.FC<SidebarProps> = ({
     };
 
     return (
-        <div
-            style={{
-                flex: "0 0 300px",
-                display: "flex",
-                flexDirection: "column",
-                alignItems: "flex-start",
-                gap: "20px",
-                padding: "20px",
-                overflow: "hidden",
-                boxSizing: "border-box",
-                position: "relative"
-            }}
-        >
-            <div
-                style={{
-                    display: "flex",
-                    flexDirection: "column",
-                    gap: "0px",
-                    padding: "5px",
-                    fontFamily: "'Poppins', sans-serif"
-                }}
-            >
+        <div className="flex-none w-[300px] flex flex-col items-start gap-5 p-5 overflow-hidden box-border relative">
+            <div className="flex flex-col gap-0 p-1" style={{ fontFamily: "'Poppins', sans-serif" }}>
                 <div
                     onClick={copyGameIdToClipboard}
-                    style={{
-                        background: "linear-gradient(135deg, #6a11cb, #2575fc)",
-                        color: "white",
-                        borderRadius: "10px",
-                        padding: "20px",
-                        boxShadow: "0 4px 8px rgba(0, 0, 0, 0.1)",
-                        transition: "transform 0.2s ease, box-shadow 0.2s ease",
-                        cursor: "pointer"
-                    }}
-                    onMouseOver={(e) => {
-                        e.currentTarget.style.transform = "scale(1.05)";
-                        e.currentTarget.style.boxShadow = "0 6px 12px rgba(0, 0, 0, 0.2)";
-                    }}
-                    onMouseOut={(e) => {
-                        e.currentTarget.style.transform = "scale(1)";
-                        e.currentTarget.style.boxShadow = "0 4px 8px rgba(0, 0, 0, 0.1)";
-                    }}
+                    className="bg-gradient-to-br from-[#6a11cb] to-[#2575fc] text-white rounded-xl p-5 shadow-lg transition-all duration-200 cursor-pointer hover:scale-105 hover:shadow-xl"
                 >
-                    <p style={{ fontSize: "18px", fontWeight: "bold", margin: "0" }}>
+                    <p className="text-lg font-bold m-0">
                         <strong>Game ID:</strong> {gameId}
                     </p>
-                    <p style={{ fontSize: "16px", margin: "0" }}>
+                    <p className="text-base m-0">
                         <strong>Host:</strong>{" "}
-                        <span
-                            style={{
-                                fontWeight: "bold",
-                                color: isHost ? "#ffeb3b" : "#ffffff"
-                            }}
-                        >
-              {isHost ? "You" : host || "Unknown"}
-            </span>
+                        <span className={`font-bold ${isHost ? "text-yellow-300" : "text-white"}`}>
+                        {isHost ? "You" : host || "Unknown"}
+                    </span>
                     </p>
                 </div>
-                {copySuccess && (
-                    <div
-                        style={{
-                            marginTop: "10px",
-                            padding: "10px 15px",
-                            backgroundColor: "#4caf50",
-                            borderRadius: "5px",
-                            color: "white",
-                            fontSize: "14px",
-                            textAlign: "center",
-                            boxShadow: "0px 4px 6px rgba(0, 0, 0, 0.2)"
-                        }}
-                    >
-                        Game ID copied to clipboard!
-                    </div>
-                )}
-                {/* Player List Section */}
+
+                <div className="relative">
+                    {copySuccess && (
+                        <div className="absolute mt-2 px-3.5 py-2.5 left-3 bg-green-500 rounded-md text-white text-sm text-center shadow-md">
+                            Game ID copied to clipboard!
+                        </div>
+                    )}
+                </div>
+
                 <div>
-                    <h2
-                        style={{
-                            fontSize: "24px",
-                            fontWeight: "bolder",
-                            background: "linear-gradient(to right, #1e88e5, #3d5afe, #5c6bc0)",
-                            color: "white",
-                            padding: "20px 20px",
-                            borderRadius: "8px",
-                            textAlign: "center",
-                            display: "flex",
-                            alignItems: "center",
-                            gap: "10px",
-                            boxShadow: "0 4px 6px rgba(0, 0, 0, 0.1)"
-                        }}
-                    >
+                    <h2 className="text-2xl mt-3 font-extrabold bg-gradient-to-r from-[#1e88e5] via-[#3d5afe] to-[#5c6bc0] text-white px-5 py-5 rounded-lg text-center flex items-center gap-2.5 shadow-md mb-3">
                         Players
                     </h2>
-                    <ul style={{ listStyleType: "none", padding: 0, margin: 0 }}>
+                    <ul className="list-none p-0 m-0">
                         {players.map((player, index) => (
                             <li
                                 key={index}
-                                style={{
-                                    display: "flex",
-                                    alignItems: "center",
-                                    padding: "10px",
-                                    backgroundColor: host === player ? "#ffe082" : "#f5f5f5",
-                                    borderRadius: "8px",
-                                    marginBottom: "8px",
-                                    fontSize: "16px",
-                                    boxShadow: "0 2px 4px rgba(0, 0, 0, 0.1)"
-                                }}
+                                className={`flex items-center p-2.5 ${
+                                    host === player ? "bg-amber-100" : "bg-gray-100"
+                                } rounded-lg mb-2 text-base shadow-sm text-blue-500`}
                             >
                                 <div
-                                    style={{
-                                        width: "30px",
-                                        height: "30px",
-                                        borderRadius: "50%",
-                                        backgroundColor: host === player ? "#ffca28" : "#2196f3",
-                                        display: "flex",
-                                        justifyContent: "center",
-                                        alignItems: "center",
-                                        color: "white",
-                                        fontWeight: "bold",
-                                        marginRight: "10px"
-                                    }}
+                                    className={`w-8 h-8 rounded-full ${
+                                        host === player ? "bg-amber-400" : "bg-blue-500"
+                                    } flex justify-center items-center text-white font-bold mr-2.5`}
                                 >
                                     {player.charAt(0).toUpperCase()}
                                 </div>
-                                <div
-                                    style={{
-                                        display: "flex",
-                                        flexDirection: "column",
-                                        flex: 1
-                                    }}
-                                >
-                  <span
-                      style={{
-                          fontWeight: host === player ? "bold" : "normal"
-                      }}
-                  >
-                    {player}
-                  </span>
+                                <div className="flex flex-col flex-1">
+                                <span className={host === player ? "font-bold" : ""}>
+                                    {player}
+                                </span>
                                     <span
-                                        style={{
-                                            marginTop: "5px",
-                                            fontWeight: "bold",
-                                            fontSize: "14px",
-                                            color:
-                                                scores[player] < 0 ? "#f44336" : "#4caf50"
-                                        }}
+                                        className={`-mt-1.5 font-bold text-sm ${
+                                            scores[player] < 0 ? "text-red-500" : "text-green-500"
+                                        }`}
                                     >
-                    ${scores[player] || 0}
-                  </span>
+                                    ${scores[player] || 0}
+                                </span>
                                 </div>
                                 {isHost && (
-                                    <div
-                                        style={{ display: "flex", gap: "8px", marginLeft: "auto" }}
-                                    >
+                                    <div className="flex gap-2 ml-auto">
                                         <button
-                                            onClick={() =>
-                                                handleScoreUpdate(player, -lastQuestionValue)
-                                            }
-                                            style={{
-                                                padding: "5px 10px",
-                                                backgroundColor: "#f44336",
-                                                color: "white",
-                                                border: "none",
-                                                borderRadius: "40%",
-                                                fontSize: "14px",
-                                                cursor: "pointer"
-                                            }}
-                                            onMouseOver={(e) =>
-                                                (e.currentTarget.style.backgroundColor = "#d32f2f")
-                                            }
-                                            onMouseOut={(e) =>
-                                                (e.currentTarget.style.backgroundColor = "#f44336")
-                                            }
+                                            onClick={() => handleScoreUpdate(player, -lastQuestionValue)}
+                                            className="w-8 h-8 p-0 bg-red-500 text-white rounded-full flex items-center justify-center text-sm hover:bg-red-600"
                                         >
                                             −
                                         </button>
                                         <button
-                                            onClick={() =>
-                                                handleScoreUpdate(player, lastQuestionValue)
-                                            }
-                                            style={{
-                                                padding: "5px 10px",
-                                                backgroundColor: "#4caf50",
-                                                color: "white",
-                                                border: "none",
-                                                borderRadius: "40%",
-                                                fontSize: "14px",
-                                                cursor: "pointer"
-                                            }}
-                                            onMouseOver={(e) =>
-                                                (e.currentTarget.style.backgroundColor = "#388e3c")
-                                            }
-                                            onMouseOut={(e) =>
-                                                (e.currentTarget.style.backgroundColor = "#4caf50")
-                                            }
+                                            onClick={() => handleScoreUpdate(player, lastQuestionValue)}
+                                            className="w-8 h-8 p-0 bg-green-500 text-white rounded-full flex items-center justify-center text-sm hover:bg-green-600"
                                         >
                                             ＋
                                         </button>
@@ -266,93 +140,54 @@ const Sidebar: React.FC<SidebarProps> = ({
                     </ul>
                 </div>
             </div>
-            <div
-                style={{
-                    position: "fixed",
-                    bottom: "0px",
-                    left: "20px",
-                    width: "260px",
-                    display: "flex",
-                    flexDirection: "column",
-                    alignItems: "center",
-                    gap: "20px",
-                    zIndex: 100
-                }}
-            >
-                {isHost && selectedClue && players.length > 0 && !isFinalJeopardy && (
+
+            <div className="fixed bottom-0 left-5 w-[260px] flex flex-col items-center gap-5 z-[100]">
+                {isHost && selectedClue && players.length > 0 && !(players.length === 1 && isHost) && !isFinalJeopardy && (
                     <button
                         onClick={() => {
                             if (buzzerLocked) {
                                 if (socket && isSocketReady) {
-                                    socket.send(
-                                        JSON.stringify({ type: "unlock-buzzer", gameId })
-                                    );
+                                    socket.send(JSON.stringify({ type: "unlock-buzzer", gameId }));
                                 }
                                 setBuzzerLocked(false);
                             } else {
                                 if (socket && isSocketReady) {
-                                    socket.send(
-                                        JSON.stringify({type: "reset-buzzer", gameId})
-                                    );
+                                    socket.send(JSON.stringify({ type: "reset-buzzer", gameId }));
                                 }
                                 setIsBuzzed(false);
                                 setBuzzResult(null);
                                 setBuzzerLocked(true);
                             }
                         }}
-                        style={{
-                            padding: "30px 50px",
-                            backgroundColor: buzzerLocked ? "green" : isBuzzed ? "red" : "gray",
-                            color: "white",
-                            fontSize: "24px",
-                            fontWeight: "bold",
-                            border: "none",
-                            cursor: "pointer",
-                            minWidth: "300px"
-                        }}
+                        className={`px-12 py-7 text-white text-2xl font-bold border-none cursor-pointer min-w-[300px] ${
+                            buzzerLocked ? "bg-green-500" : isBuzzed ? "bg-red-500" : "bg-gray-500"
+                        } ${!isBuzzed && !buzzerLocked ? "opacity-50 cursor-not-allowed" : ""}`}
                         disabled={!isBuzzed && !buzzerLocked}
                     >
                         {buzzerLocked ? "Unlock Buzzer" : "Reset Buzzer"}
                     </button>
                 )}
-                {isHost && activeBoard !== "finalJeopardy" && (
+
+                {profile && profile.role == 'admin' && isHost && activeBoard !== "finalJeopardy" && (
                     <button
                         onClick={markAllCluesComplete}
-                        style={{
-                            padding: "20px 40px",
-                            backgroundColor: "#D32F2F",
-                            color: "white",
-                            fontSize: "20px",
-                            fontWeight: "bold",
-                            border: "none",
-                            borderRadius: "8px",
-                            cursor: "pointer",
-                            minWidth: "300px"
-                        }}
+                        className="px-10 py-5 bg-red-700 text-white text-xl font-bold border-none rounded-lg cursor-pointer min-w-[300px] hover:bg-red-800"
                     >
                         Mark All Questions Complete
                     </button>
                 )}
+
                 {!isHost && selectedClue && !isFinalJeopardy && (
                     <button
                         onClick={handleBuzz}
                         disabled={isBuzzed || buzzLockedOut}
-                        style={{
-                            padding: "40px 60px",
-                            backgroundColor: buzzLockedOut
-                                ? "orange"
+                        className={`px-16 py-10 text-white text-3xl font-bold border-none cursor-pointer min-w-[300px] ${
+                            buzzLockedOut
+                                ? "bg-orange-500"
                                 : isBuzzed || buzzerLocked
-                                    ? "gray"
-                                    : "blue",
-                            color: "white",
-                            fontSize: "30px",
-                            fontWeight: "bold",
-                            border: "none",
-                            cursor: isBuzzed || buzzerLocked || buzzLockedOut
-                                ? "not-allowed"
-                                : "pointer",
-                            minWidth: "300px"
-                        }}
+                                    ? "bg-gray-500 cursor-not-allowed"
+                                    : "bg-blue-500 hover:bg-blue-600"
+                        }`}
                     >
                         {buzzLockedOut
                             ? "Locked Out"
@@ -362,23 +197,10 @@ const Sidebar: React.FC<SidebarProps> = ({
                     </button>
                 )}
             </div>
+
             {buzzResult && (
-                <div
-                    style={{
-                        display: "flex",
-                        alignItems: "center",
-                        justifyContent: "flex-start",
-                        padding: "10px 20px",
-                        marginBottom: "10px",
-                        background: "linear-gradient(135deg, #6dd5fa, #2980b9)",
-                        color: "#fff",
-                        borderRadius: "8px",
-                        fontWeight: "bold",
-                        fontSize: "18px",
-                        boxShadow: "0 4px 6px rgba(0, 0, 0, 0.15)"
-                    }}
-                >
-                    <span style={{ marginRight: "10px", fontSize: "20px" }}>🎉</span>
+                <div className="flex items-center justify-start p-2.5 mb-2.5 bg-gradient-to-br from-[#6dd5fa] to-[#2980b9] text-white rounded-lg font-bold text-lg shadow-md">
+                    <span className="mr-2.5 text-xl">🎉</span>
                     <span>{buzzResult}</span>
                 </div>
             )}

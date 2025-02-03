@@ -23,54 +23,8 @@ const WagerInput: React.FC<WagerInputProps> = ({
                                                }) => {
     return (
         <div>
-            {isHost ? (
-                players.length === 0 ? (
-                    // Host sees wagers only if no players are present
-                    <div
-                        style={{
-                            display: "flex",
-                            flexDirection: "row",
-                            alignItems: "center",
-                            marginBottom: "10px",
-                        }}
-                    >
-                        <span style={{ marginRight: "10px" }}>Host:</span>
-                        <input
-                            type="number"
-                            min={0}
-                            max={scores["host"] || 0}
-                            value={wagers["host"] || ""}
-                            onChange={(e) =>
-                                handleWagerChange("host", parseInt(e.target.value, 10))
-                            }
-                            disabled={wagerSubmitted.includes("host")}
-                            style={{
-                                width: "100px",
-                                padding: "5px",
-                                marginRight: "10px",
-                            }}
-                        />
-                        {!wagerSubmitted.includes("host") ? (
-                            <button
-                                onClick={() => submitWager("host")}
-                                style={{
-                                    padding: "6px 12px",
-                                    background: "green",
-                                    color: "white",
-                                    border: "none",
-                                    borderRadius: "4px",
-                                    cursor: "pointer",
-                                }}
-                            >
-                                Submit Wager
-                            </button>
-                        ) : (
-                            <span style={{ color: "lime" }}>Wager Submitted!</span>
-                        )}
-                    </div>
-                ) : (
-                    <p>Waiting for players to place their wagers...</p>
-                )
+            {isHost && players.length > 1 ? (
+                <p>Waiting for players to place their wagers...</p>
             ) : (
                 players
                     .filter((player) => player === currentPlayer) // Only show box for the current player
@@ -78,16 +32,11 @@ const WagerInput: React.FC<WagerInputProps> = ({
                         return (
                             <div
                                 key={player}
-                                style={{
-                                    display: "flex",
-                                    flexDirection: "row",
-                                    alignItems: "center",
-                                    marginBottom: "10px",
-                                }}
+                                className="flex flex-row items-center mb-2"
                             >
-                                <span style={{ marginRight: "10px" }}>{player}:</span>
+                                <span className="mr-2">{player}:</span>
                                 {scores[player] <= 0 ? (
-                                    <span style={{ color: "red" }}>
+                                    <span className="text-red-500">
                                         Wager Automatically Set to $0
                                     </span>
                                 ) : (
@@ -104,28 +53,17 @@ const WagerInput: React.FC<WagerInputProps> = ({
                                                 )
                                             }
                                             disabled={wagerSubmitted.includes(player)}
-                                            style={{
-                                                width: "100px",
-                                                padding: "5px",
-                                                marginRight: "10px",
-                                            }}
+                                            className="w-[100px] p-1 mr-2 border border-gray-300 rounded"
                                         />
                                         {!wagerSubmitted.includes(player) ? (
                                             <button
                                                 onClick={() => submitWager(player)}
-                                                style={{
-                                                    padding: "6px 12px",
-                                                    background: "green",
-                                                    color: "white",
-                                                    border: "none",
-                                                    borderRadius: "4px",
-                                                    cursor: "pointer",
-                                                }}
+                                                className="px-3 py-1 bg-green-600 text-white rounded cursor-pointer"
                                             >
                                                 Submit Wager
                                             </button>
                                         ) : (
-                                            <span style={{ color: "lime" }}>
+                                            <span className="text-lime-500">
                                                 Wager Submitted!
                                             </span>
                                         )}

@@ -1,8 +1,8 @@
 import React from "react";
 import { ReactSketchCanvas } from "react-sketch-canvas";
-import {convertToSVG, DrawingPath} from "../utils/drawingUtils";
+import { convertToSVG, DrawingPath } from "../utils/drawingUtils";
 import { Clue } from "../types";
-import {useWebSocket} from "../contexts/WebSocketContext.tsx";
+import { useWebSocket } from "../contexts/WebSocketContext.tsx";
 
 interface SelectedClueDisplayProps {
     localSelectedClue: Clue;
@@ -13,12 +13,13 @@ interface SelectedClueDisplayProps {
     isFinalJeopardy: boolean;
     gameId: string;
     currentPlayer: string;
-    // @ts-expect-error how its done.
+    // @ts-expect-error sketch type of issue
     canvasRef: React.RefObject<ReactSketchCanvas>;
     drawings: Record<string, DrawingPath[]> | null;
     drawingSubmitted: Record<string, boolean>;
     setDrawingSubmitted: React.Dispatch<React.SetStateAction<Record<string, boolean>>>;
     hostCanSeeAnswer: boolean;
+    players: string[];
 }
 
 const SelectedClueDisplay: React.FC<SelectedClueDisplayProps> = ({
@@ -35,56 +36,20 @@ const SelectedClueDisplay: React.FC<SelectedClueDisplayProps> = ({
                                                                      drawingSubmitted,
                                                                      setDrawingSubmitted,
                                                                      hostCanSeeAnswer,
+                                                                     players
                                                                  }) => {
     const { socket, isSocketReady } = useWebSocket();
+
     return (
-        <div
-            style={{
-                position: "absolute",
-                top: 0,
-                left: 0,
-                right: 0,
-                bottom: 0,
-                backgroundColor: "#222",
-                color: "#FFF",
-                display: "flex",
-                justifyContent: "center",
-                alignItems: "center",
-                flexDirection: "column",
-                zIndex: 10,
-                padding: "20px",
-            }}
-        >
-            <div style={{textAlign: "center", cursor: "pointer", width: "100%"}}>
+        <div className="absolute inset-0 bg-gray-800 text-white flex flex-col justify-center items-center z-10 p-5">
+            <div className="text-center cursor-pointer w-full">
                 {/* Question */}
-                <h1
-                    style={{
-                        fontSize: "2.5rem",
-                        marginBottom: "20px",
-                    }}
-                >
-                    {localSelectedClue.question}
-                </h1>
+                <h1 className="text-4xl mb-5">{localSelectedClue.question}</h1>
 
                 {/* Reserve space for the answer */}
-                <div
-                    style={{
-                        minHeight: "100px",
-                        display: "flex",
-                        justifyContent: "center",
-                        alignItems: "center",
-                    }}
-                >
+                <div className="min-h-[100px] flex justify-center items-center">
                     {(showAnswer || hostCanSeeAnswer) && (
-                        <p
-                            style={{
-                                marginTop: "20px",
-                                fontSize: "2rem",
-                                color: "#FFD700",
-                            }}
-                        >
-                            {localSelectedClue.answer}
-                        </p>
+                        <p className="mt-5 text-3xl text-yellow-400">{localSelectedClue.answer}</p>
                     )}
                 </div>
 
@@ -92,48 +57,24 @@ const SelectedClueDisplay: React.FC<SelectedClueDisplayProps> = ({
                     <p>Answer Submitted, waiting for others...</p>
                 )}
 
-                {!isHost && isFinalJeopardy && !drawingSubmitted[currentPlayer] && (
-                    <div
-                        style={{
-                            display: "flex",
-                            flexDirection: "column",
-                            alignItems: "center",
-                            justifyContent: "center",
-                            width: "100%",
-                            height: "100%",
-                            backgroundColor: "#222",
-                            color: "#fff",
-                            padding: "20px",
-                        }}
-                    >
-                        <h2 style={{marginBottom: "20px"}}>Write Your Answer</h2>
+                {(!isHost || players.length === 1) && isFinalJeopardy && !drawingSubmitted[currentPlayer] && (
+                    <div className="flex flex-col items-center justify-center w-full h-full bg-gray-800 text-white p-5">
+                        <h2 className="mb-5">Write Your Answer</h2>
 
                         <ReactSketchCanvas
                             ref={canvasRef}
-                            style={{
-                                border: "2px solid white",
-                                borderRadius: "8px",
-                                backgroundColor: "white",
-                            }}
+                            className="border-2 border-white rounded-lg bg-white"
                             width="700px"
                             height="250px"
                             strokeWidth={4}
                             strokeColor="black"
                         />
 
-                        <div style={{marginTop: "20px"}}>
+                        <div className="mt-5">
                             {/* Clear Canvas */}
                             <button
                                 onClick={() => canvasRef.current?.clearCanvas()}
-                                style={{
-                                    marginRight: "10px",
-                                    padding: "10px 20px",
-                                    borderRadius: "8px",
-                                    border: "none",
-                                    backgroundColor: "#f55",
-                                    color: "white",
-                                    cursor: "pointer",
-                                }}
+                                className="mr-2 px-5 py-2 rounded-lg bg-red-500 text-white cursor-pointer"
                             >
                                 Clear
                             </button>
@@ -163,14 +104,7 @@ const SelectedClueDisplay: React.FC<SelectedClueDisplayProps> = ({
                                         }
                                     });
                                 }}
-                                style={{
-                                    padding: "10px 20px",
-                                    borderRadius: "8px",
-                                    border: "none",
-                                    backgroundColor: "#58a",
-                                    color: "white",
-                                    cursor: "pointer",
-                                }}
+                                className="px-5 py-2 rounded-lg bg-blue-500 text-white cursor-pointer"
                             >
                                 Submit
                             </button>
@@ -195,7 +129,6 @@ const SelectedClueDisplay: React.FC<SelectedClueDisplayProps> = ({
                                 }
                             } else {
                                 setShowClue(false);
-
 
                                 if (localSelectedClue && socket && isSocketReady) {
                                     const clueId = `${localSelectedClue.value}-${localSelectedClue.question}`;
@@ -226,33 +159,19 @@ const SelectedClueDisplay: React.FC<SelectedClueDisplayProps> = ({
                                 }
                             }
                         }}
-                        style={{
-                            marginTop: "30px",
-                            padding: "20px 50px",
-                            backgroundColor: isFinalJeopardy && !drawings ? "#AAAAAA" : showAnswer ? "#FF8800" : "#007BFF",
-                            color: "white",
-                            fontSize: "24px",
-                            fontWeight: "bold",
-                            border: "none",
-                            borderRadius: "12px",
-                            cursor: "pointer",
-                            width: "300px",
-                            transition: "background-color 0.3s ease",
-                        }}
-                        onMouseEnter={(e) => {
-                            e.currentTarget.style.backgroundColor = isFinalJeopardy && !drawings
-                                ? "#AAAAAA"
+                        className={`mt-8 px-12 py-5 rounded-xl font-bold text-xl ${
+                            isFinalJeopardy && !drawings
+                                ? "bg-gray-400 cursor-not-allowed"
                                 : showAnswer
-                                    ? "#E06F00"
-                                    : "#0056B3";
-                        }}
-                        onMouseLeave={(e) => {
-                            e.currentTarget.style.backgroundColor = isFinalJeopardy && !drawings
-                                ? "#AAAAAA"
+                                    ? "bg-orange-500"
+                                    : "bg-blue-600"
+                        } text-white transition duration-300 ease-in-out hover:${
+                            isFinalJeopardy && !drawings
+                                ? "bg-gray-400"
                                 : showAnswer
-                                    ? "#FF8800"
-                                    : "#007BFF";
-                        }}
+                                    ? "bg-orange-700"
+                                    : "bg-blue-800"
+                        }`}
                     >
                         {isFinalJeopardy && !drawings
                             ? "Waiting for answers"
@@ -265,14 +184,14 @@ const SelectedClueDisplay: React.FC<SelectedClueDisplayProps> = ({
                 {drawings &&
                     !Array.isArray(drawings) &&
                     Object.entries(drawings).map(([player, drawingString]) => (
-                        <div key={player} style={{marginBottom: "20px", zIndex: 0}}>
+                        <div key={player} className="mb-5 z-0">
                             <h2>{player}'s answer:</h2>
                             {convertToSVG(drawingString)}
                         </div>
                     ))}
             </div>
         </div>
-    )
+    );
 };
 
 export default SelectedClueDisplay;
