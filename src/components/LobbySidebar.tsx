@@ -1,22 +1,24 @@
 import React from "react";
+import Avatar from "./common/Avatar.tsx";
+import {Player} from "../types/Lobby.ts";
 
 interface LobbySidebarProps {
     gameId: string | undefined;
     isHost: boolean;
     host: string | null;
-    players: string[];
+    players: Player[];
     copySuccess: boolean;
     setCopySuccess: React.Dispatch<React.SetStateAction<boolean>>;
 }
 
 const LobbySidebar: React.FC<LobbySidebarProps> = ({
-                                                gameId,
-                                                isHost,
-                                                host,
-                                                players,
-                                                  copySuccess,
-                                                setCopySuccess
-                                         }) => {
+                                                       gameId,
+                                                       isHost,
+                                                       host,
+                                                       players,
+                                                       copySuccess,
+                                                       setCopySuccess,
+                                                   }) => {
     const copyGameIdToClipboard = () => {
         if (gameId) {
             navigator.clipboard.writeText(gameId); // Copy Game ID to clipboard
@@ -26,151 +28,58 @@ const LobbySidebar: React.FC<LobbySidebarProps> = ({
     };
 
     return (
-        <div
-            style={{
-                flex: "0 0 15%",
-                minWidth: "200px",
-                display: "flex",
-                flexDirection: "column",
-                alignItems: "flex-start",
-                gap: "20px",
-                padding: "20px",
-                overflow: "hidden",
-                boxSizing: "border-box",
-                position: "relative"
-            }}
-        >
-            <div
-                style={{
-                    display: "flex",
-                    flexDirection: "column",
-                    gap: "0px",
-                    padding: "5px",
-                    fontFamily: "'Poppins', sans-serif"
-                }}
-            >
+        <div className="flex-none w-[300px] flex flex-col items-start gap-5 p-5 overflow-hidden box-border relative">
+            <div className="flex flex-col gap-0 p-1" style={{ fontFamily: "'Poppins', sans-serif" }}>
+                {/* Game ID and Host Card */}
                 <div
                     onClick={copyGameIdToClipboard}
-                    style={{
-                        background: "linear-gradient(135deg, #6a11cb, #2575fc)",
-                        color: "white",
-                        borderRadius: "10px",
-                        padding: "20px",
-                        boxShadow: "0 4px 8px rgba(0, 0, 0, 0.1)",
-                        transition: "transform 0.2s ease, box-shadow 0.2s ease",
-                        cursor: "pointer"
-                    }}
-                    onMouseOver={(e) => {
-                        e.currentTarget.style.transform = "scale(1.05)";
-                        e.currentTarget.style.boxShadow = "0 6px 12px rgba(0, 0, 0, 0.2)";
-                    }}
-                    onMouseOut={(e) => {
-                        e.currentTarget.style.transform = "scale(1)";
-                        e.currentTarget.style.boxShadow = "0 4px 8px rgba(0, 0, 0, 0.1)";
-                    }}
+                    className="bg-gradient-to-br from-[#6a11cb] to-[#2575fc] text-white rounded-xl p-5 shadow-lg transition-all duration-200 cursor-pointer hover:scale-105 hover:shadow-xl"
                 >
-                    <p style={{ fontSize: "18px", fontWeight: "bold", margin: "0" }}>
+                    <p className="text-lg font-bold m-0">
                         <strong>Game ID:</strong> {gameId}
                     </p>
-                    <p style={{ fontSize: "16px", margin: "0" }}>
+                    <p className="text-base m-0">
                         <strong>Host:</strong>{" "}
-                        <span
-                            style={{
-                                fontWeight: "bold",
-                                color: isHost ? "#ffeb3b" : "#ffffff"
-                            }}
-                        >
-              {isHost ? "You" : host || "Unknown"}
-            </span>
+                        <span className={`font-bold ${isHost ? "text-yellow-300" : "text-white"}`}>
+                        {isHost ? "You" : host || "Unknown"}
+                    </span>
                     </p>
                 </div>
-                {copySuccess && (
-                    <div
-                        style={{
-                            marginTop: "10px",
-                            padding: "10px 15px",
-                            backgroundColor: "#4caf50",
-                            borderRadius: "5px",
-                            color: "white",
-                            fontSize: "14px",
-                            textAlign: "center",
-                            boxShadow: "0px 4px 6px rgba(0, 0, 0, 0.2)"
-                        }}
-                    >
-                        Game ID copied to clipboard!
-                    </div>
-                )}
+
+                <div className="relative">
+                    {copySuccess && (
+                        <div className="absolute mt-2 px-3.5 py-2.5 left-3 bg-green-500 rounded-md text-white text-sm text-center shadow-md">
+                            Game ID copied to clipboard!
+                        </div>
+                    )}
+                </div>
+
+                {/* Player List Section */}
                 <div>
-                    <h2
-                        style={{
-                            fontSize: "24px",
-                            fontWeight: "bolder",
-                            background: "linear-gradient(to right, #1e88e5, #3d5afe, #5c6bc0)",
-                            color: "white",
-                            padding: "20px 20px",
-                            borderRadius: "8px",
-                            textAlign: "center",
-                            display: "flex",
-                            alignItems: "center",
-                            gap: "10px",
-                            boxShadow: "0 4px 6px rgba(0, 0, 0, 0.1)",
-                        }}
-                    >
+                    <h2 className="text-2xl mt-3 font-extrabold bg-gradient-to-r from-[#1e88e5] via-[#3d5afe] to-[#5c6bc0] text-white px-5 py-5 rounded-lg text-center flex items-center gap-2.5 shadow-md mb-3">
                         Players
                     </h2>
-                    <ul style={{ listStyleType: "none", padding: 0, margin: 0 }}>
-                        {players.map((player, index) => (
-                            <li
-                                key={index}
-                                style={{
-                                    display: "flex",
-                                    alignItems: "center",
-                                    padding: "10px",
-                                    backgroundColor: host === player ? "#ffe082" : "#f5f5f5",
-                                    borderRadius: "8px",
-                                    marginBottom: "8px",
-                                    fontSize: "16px",
-                                    boxShadow: "0 2px 4px rgba(0, 0, 0, 0.1)"
-                                }}
-                            >
-                                <div
-                                    style={{
-                                        width: "30px",
-                                        height: "30px",
-                                        borderRadius: "50%",
-                                        backgroundColor: host === player ? "#ffca28" : "#2196f3",
-                                        display: "flex",
-                                        justifyContent: "center",
-                                        alignItems: "center",
-                                        color: "white",
-                                        fontWeight: "bold",
-                                        marginRight: "10px"
-                                    }}
+                    <ul className="list-none p-0 m-0">
+                        {players
+                            .filter((player) => !(players.length > 1 && player.name === host)) // Exclude the host if there are multiple players
+                            .map((player, index) => (
+                                <li
+                                    key={index}
+                                    className={`flex items-center p-2.5 bg-gray-100 rounded-lg mb-2 text-base shadow-sm text-blue-500`}
                                 >
-                                    {player.charAt(0).toUpperCase()}
-                                </div>
-                                <div
-                                    style={{
-                                        display: "flex",
-                                        flexDirection: "column",
-                                        flex: 1
-                                    }}
-                                >
-                              <span
-                                  style={{
-                                      fontWeight: host === player ? "bold" : "normal"
-                                  }}
-                              >
-                                {player}
-                              </span>
-                                </div>
-                            </li>
-                        ))}
+                                    <Avatar name={player.name} size="8" color={player.color}/>
+
+                                    <div className="flex flex-col flex-1 ml-3">
+                                        <span className={host === player.name ? "font-bold" : ""}>
+                                            {player.name}
+                                        </span>
+                                    </div>
+                                </li>
+                            ))}
                     </ul>
                 </div>
             </div>
         </div>
-
     );
 };
 

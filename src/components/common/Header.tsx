@@ -33,7 +33,7 @@ const Header: React.FC = () => {
                 <div className="flex items-center space-x-6">
                     <Link
                         to="/"
-                        className="text-2xl font-bold hover:underline text-blue-400 hover:text-blue-500"
+                        className="text-3xl font-bold hover:underline text-blue-400 hover:text-blue-500"
                         aria-label="Go to Main Page"
                     >
                         AI-Jeopardy.com
@@ -42,7 +42,7 @@ const Header: React.FC = () => {
                     <nav className="hidden md:flex items-center space-x-3 ">
                         <Link
                             to="/recent-boards"
-                            className="px-4 py-2 hover:underline hover:bg-blue-500 rounded text-white hover:text-white"
+                            className="px-4 text-xl py-2 hover:underline hover:bg-blue-500 rounded text-white hover:text-white"
                         >
                             Recent Boards
                         </Link>
@@ -56,9 +56,9 @@ const Header: React.FC = () => {
                         <div className="hidden relative md:block">
                             <button
                                 onClick={toggleDropdown}
-                                className="flex items-center px-4 py-2 rounded hover:bg-blue-400 focus:outline-none"
+                                className="flex items-center text-xl px-4 py-2 rounded hover:bg-blue-400 focus:outline-none"
                             >
-                                <span>{profile.username}</span>
+                                <span>{profile.displayname}</span>
                                 <svg
                                     xmlns="http://www.w3.org/2000/svg"
                                     className="h-4 w-4 ml-2"
@@ -77,7 +77,7 @@ const Header: React.FC = () => {
                             {dropdownOpen && (
                                 <div className="absolute right-0 mt-2 w-48 bg-gray-100 text-black rounded shadow-lg z-50">
                                     <Link
-                                        to="/profile"
+                                        to={`/profile/${profile.username}`}
                                         className="block px-4 py-2 text-blue-600 hover:bg-gray-200"
                                     >
                                         Your Profile
@@ -90,7 +90,7 @@ const Header: React.FC = () => {
                                     </Link>
                                     <span
                                         onClick={handleLogout}
-                                        className="block px-4 py-2 text-blue-600 hover:bg-gray-200 cursor-pointer"
+                                        className="block px-4 py-2 text-red-600 hover:bg-gray-200 cursor-pointer"
                                     >
                     Log out
                   </span>
@@ -137,7 +137,7 @@ const Header: React.FC = () => {
                     {user && profile && (
                         <>
                             <Link
-                                to="/profile"
+                                to={`/profile/${profile.username}`}
                                 className="block px-4 py-2 hover:bg-blue-500"
                                 onClick={() => setMenuOpen(false)}
                             >
@@ -158,7 +158,7 @@ const Header: React.FC = () => {
                                 setMenuOpen(false);
                                 handleLogout();
                             }}
-                            className="block px-4 py-2 hover:bg-blue-500 cursor-pointer"
+                            className="block px-4 py-2 text-red-600 hover:bg-blue-500 cursor-pointer"
                         >
               Log out
             </span>

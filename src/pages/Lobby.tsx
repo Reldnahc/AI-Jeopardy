@@ -7,6 +7,15 @@ import LoadingScreen from "../components/common/LoadingScreen.tsx";
 import HostControls from "../components/lobby/HostControls.tsx";
 import FinalJeopardyCategory from "../components/lobby/FinalJeopardyCategory.tsx";
 import CategoryBoard from "../components/lobby/CategoryBoard.tsx";
+import {Player} from "../types/Lobby.ts";
+
+type LockedCategories = {
+    firstBoard: boolean[]; // Jeopardy lock states
+    secondBoard: boolean[]; // Double Jeopardy lock states
+    finalJeopardy: boolean[];
+};
+
+type BoardType = 'firstBoard' | 'secondBoard';
 
 const Lobby: React.FC = () => {
     const location = useLocation();
@@ -27,10 +36,15 @@ const Lobby: React.FC = () => {
     const [loadingMessage, setLoadingMessage] = useState('');
     const [loadingDots, setLoadingDots] = useState('');
     const [copySuccess, setCopySuccess] = useState(false);
-    const [players, setPlayers] = useState<string[]>([]);
+    const [players, setPlayers] = useState<Player[]>(location.state?.players || []);
     const [host, setHost] = useState<string | null>(null);
     const [selectedModel, setSelectedModel] = useState('gpt-4o-mini'); // Default value for dropdown
     const [sidebarOpen, setSidebarOpen] = useState(false); // Manage sidebar open/close
+    const [lockedCategories, setLockedCategories] = useState<LockedCategories>({
+        firstBoard: Array(5).fill(false), // Default unlocked
+        secondBoard: Array(5).fill(false), // Default unlocked
+        finalJeopardy: Array(1).fill(false),
+    });
 
     const { socket, isSocketReady } = useWebSocket();
     const navigate = useNavigate();
@@ -59,6 +73,26 @@ const Lobby: React.FC = () => {
                             secondBoard: message.categories.slice(5, 10),
                             finalJeopardy: message.categories[10],
                         });
+                    }
+                    if (message.lockedCategories) {
+                        setLockedCategories({
+                            firstBoard: message.lockedCategories.firstBoard,
+                            secondBoard: message.lockedCategories.secondBoard,
+                            finalJeopardy: message.lockedCategories.finalJeopardy,
+                        });
+                    }
+                }
+
+                if (message.type === 'category-lock-updated') {
+                    console.log(message);
+                    if (message.boardType in lockedCategories) {
+                        setLockedCategories((prev) => {
+                            const updated: LockedCategories = { ...prev };
+                            updated[message.boardType as BoardType][message.index] = message.locked; // Type-safe access
+                            return updated;
+                        });
+                    } else {
+                        console.error(`Invalid boardType: ${message.boardType}`);
                     }
                 }
 
@@ -132,6 +166,23 @@ const Lobby: React.FC = () => {
         }
     }, [isLoading]);
 
+    const onToggleLock = (
+        boardType: 'firstBoard' | 'secondBoard' | 'finalJeopardy',
+        index: number
+    ) => {
+        if (socket && isSocketReady) {
+            socket.send(
+                JSON.stringify({
+                    type: 'toggle-lock-category',
+                    gameId,
+                    boardType,
+                    index,
+                    locked: !lockedCategories[boardType][index], // Toggle current state
+                })
+            );
+        }
+    };
+
     const handleDropdownChange = (e: React.ChangeEvent<HTMLSelectElement>) => {
         setSelectedModel(e.target.value);
     };
@@ -141,8 +192,6 @@ const Lobby: React.FC = () => {
         index: number | undefined,
         value: string
     ) => {
-        if (!isHost) return;
-
         setCategories((prev) => {
             if (boardType === 'finalJeopardy') {
                 const updatedCategories = {
@@ -272,7 +321,6 @@ const Lobby: React.FC = () => {
                         type: 'create-game',
                         gameId,
                         host: playerName,
-                        players,
                         categories: [
                             ...categories.firstBoard,
                             ...categories.secondBoard,
@@ -296,11 +344,11 @@ const Lobby: React.FC = () => {
     return isLoading ? (
         <LoadingScreen message={loadingMessage} loadingDots={loadingDots} />
     ) : (
-        <div className="flex flex-col md:flex-row h-[calc(100vh-4.5rem)] w-screen overflow-hidden bg-gradient-to-br from-[#2e3a59] to-[#1c2538]">
+        <div className="flex flex-col md:flex-row h-[calc(100vh-4.5rem)] w-screen overflow-hidden bg-[#2e3a59] ">
             {/* Sidebar Container */}
             <div
                 className={`
-          fixed top-0 left-0 z-40 w-64 h-full bg-[#1c2538] shadow-lg transform transition-transform duration-300 ease-in-out 
+          fixed top-0 left-0 z-40 w-64 h-full  transform transition-transform duration-300 ease-in-out 
           ${sidebarOpen ? 'translate-x-0' : '-translate-x-full'} 
           md:static md:translate-x-0
         `}
@@ -324,7 +372,7 @@ const Lobby: React.FC = () => {
             )}
 
             {/* Main Content */}
-            <div className="flex flex-col flex-1 bg-[#2e3a59] p-5 relative overflow-y-auto">
+            <div className="flex flex-col flex-1  p-5 relative overflow-y-auto">
                 {/* Mobile Toggle Button */}
                 <button
                     onClick={toggleSidebar}
@@ -353,18 +401,22 @@ const Lobby: React.FC = () => {
                         title="Jeopardy!"
                         categories={categories.firstBoard}
                         isHost={isHost}
+                        lockedCategories={lockedCategories.firstBoard}
                         boardType="firstBoard"
                         onChangeCategory={onChangeCategory}
                         onRandomizeCategory={handleRandomizeCategory}
+                        onToggleLock={onToggleLock}
                     />
                     {/* Second Board */}
                     <CategoryBoard
                         title="Double Jeopardy!"
                         categories={categories.secondBoard}
                         isHost={isHost}
+                        lockedCategories={lockedCategories.secondBoard}
                         boardType="secondBoard"
                         onChangeCategory={onChangeCategory}
                         onRandomizeCategory={handleRandomizeCategory}
+                        onToggleLock={onToggleLock}
                     />
                 </div>
 
@@ -375,6 +427,8 @@ const Lobby: React.FC = () => {
                         isHost={isHost}
                         onChangeCategory={onChangeCategory}
                         onRandomizeCategory={handleRandomizeCategory} // Only needs board type
+                        lockedCategories={lockedCategories.finalJeopardy}
+                        onToggleLock={onToggleLock}
                     />
                 </div>
 

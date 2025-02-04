@@ -61,6 +61,39 @@ let cotd =
     description: "Explore the wonders of the natural world and the marvels of modern science."
     };
 
+async function getIdFromUsername(username) {
+
+    const { data, error } = await supabase
+        .from('profiles')
+        .select('id, username') // Correct syntax for selecting multiple fields
+        .eq('username', username.toLowerCase())
+        .single(); // Fetch a single matching row
+
+    if (error) {
+        console.error('Error fetching ID:', error.message);
+        return null; // Return null or throw an error, based on your use case
+    }
+    return data?.id; // Access the `id` field from `data` and handle potential null values
+}
+
+async function getColorFromPlayerName(username) {
+
+    const id = await getIdFromUsername(username);
+
+    const { data, error } = await supabase
+        .from('user_profiles')
+        .select('color, id')
+        .eq('id', id)
+        .single();
+
+    if (error) {
+        console.error('Error fetching color:', error.message);
+        return null; // Return null or throw an error, based on your use case
+    }
+    console.log(data);
+    return data?.color;
+}
+
 wss.on('connection', (ws) => {
     ws.id = Math.random().toString(36).substr(2, 9); // Assign a unique ID to each socket
     console.log('New client connected');
@@ -79,37 +112,49 @@ wss.on('connection', (ws) => {
             // Assign the game ID to the WebSocket instance
             ws.gameId = data.gameId;
         }
-
+        if (data.type === 'request-lobby-state'){
+            console.log(games);
+            console.log(data.gameId);
+            console.log(games[data.gameId]);
+            ws.send(JSON.stringify({
+                type: 'lobby-state',
+                gameId: data.gameId,
+                players: games[data.gameId].players.map((p) => ({
+                    name: p.name,
+                    color: p.color,
+                })),
+                host: games[data.gameId].host,
+                categories: games[data.gameId].categories || [],
+            }));
+        }
         if (data.type === 'create-lobby') {
             const {gameId, host, categories} = data;
 
             if (games[gameId]) {
                 games[gameId].host = host;
 
-
             } else {
+                const color = await getColorFromPlayerName(host);
                 // Create a new game
-                console.log(`Creating new game ${gameId} with host ${host}`);
+                console.log(`Creating new game ${gameId} with host ${host} with color ${color} and categories ${categories}`);
                 games[gameId] = {
                     host: host,
-                    players: [],
+                    players: [{id: ws.id, name: host, color: color}],
                     inLobby: true,
                     categories: categories || [],
-
+                    lockedCategories: {
+                        firstBoard: Array(5).fill(false),
+                        secondBoard: Array(5).fill(false),
+                        finalJeopardy: Array(1).fill(false),
+                    }
                 };
+                ws.send(JSON.stringify({
+                    type: 'lobby-created',
+                    gameId: gameId,
+                    categories: categories || [],
+                    players: [{id: ws.id, name: host, color: color}],
+                }));
             }
-            ws.send(JSON.stringify({
-                type: 'lobby-state',
-                gameId,
-                players: games[gameId].players.map((p) => p.name),
-                host: games[gameId].host,
-                categories: games[gameId].categories,
-            }));
-            broadcast(gameId, {
-                type: 'player-list-update',
-                players: games[gameId].players.map((p) => p.name),
-                host: games[gameId].host,
-            });
         }
 
         if (data.type === 'join-lobby') {
@@ -132,9 +177,10 @@ wss.on('connection', (ws) => {
                 return;
             }
 
-            // Add the player to the game if not the host
-            if (games[gameId].host !== playerName && !games[gameId].players.includes(playerName)) {
-                games[gameId].players.push({id: ws.id, name: playerName});
+            // Add the player to the game
+            if (!games[gameId].players.includes(playerName)) {
+                const color = await getColorFromPlayerName(playerName);
+                games[gameId].players.push({id: ws.id, name: playerName, color: color});
             }
 
             // Log the updated player list for debugging
@@ -144,19 +190,26 @@ wss.on('connection', (ws) => {
             ws.send(JSON.stringify({
                 type: 'lobby-state',
                 gameId,
-                players: games[gameId].players.map((p) => p.name),
+                players: games[gameId].players.map((p) => ({
+                    name: p.name,
+                    color: p.color,
+                })),
                 host: games[gameId].host,
                 categories: games[gameId].categories || [],
+                lockedCategories: games[gameId].lockedCategories
             }));
             broadcast(gameId, {
                 type: 'player-list-update',
-                players: games[gameId].players.map((p) => p.name),
+                players: games[gameId].players.map((p) => ({
+                    name: p.name,
+                    color: p.color,
+                })),
                 host: games[gameId].host,
             });
         }
 
         if (data.type === 'create-game') {
-            const {gameId, categories, selectedModel, players, host} = data;
+            const {gameId, categories, selectedModel, host} = data;
 
             broadcast(gameId, {
                 type: 'trigger-loading',
@@ -181,7 +234,10 @@ wss.on('connection', (ws) => {
                 broadcast(gameId, {
                     type: 'start-game',
                     boardData: boardData,
-                    players: games[gameId].players.map((p) => p.name),
+                    players: games[gameId].players.map((p) => ({
+                        name: p.name,
+                        color: p.color,
+                    })),
                 });
             }else{
                 console.log("error moving from lobby to game. game already in progress.");
@@ -207,10 +263,30 @@ wss.on('connection', (ws) => {
             ws.send(JSON.stringify({ type: 'category-of-the-day', cotd }));
         }
 
+        if (data.type === 'toggle-lock-category') {
+            const { gameId, boardType, index, locked } = data;
+
+            if (games[gameId]) {
+
+                // Update the specific lock state for the given boardType and index
+                games[gameId].lockedCategories[boardType][index] = locked;
+
+                // Notify all players in the game about the updated lock state
+                broadcast(gameId, {
+                    type: 'category-lock-updated',
+                    boardType,
+                    index,
+                    locked,
+                });
+            } else {
+                console.error(`[Server] Game ID ${gameId} not found when toggling lock for a category.`);
+            }
+        }
+
         if (data.type === 'update-categories') {
             const { gameId, categories } = data;
 
-            if (games[gameId] && data.host === games[gameId].host) {
+            if (games[gameId]) {
                 // Broadcast the updated categories to all players in the lobby
                 broadcast(gameId, {
                     type: 'categories-updated',
@@ -343,7 +419,8 @@ wss.on('connection', (ws) => {
             }
 
             if (!games[gameId].players.includes(playerName)) {
-                games[gameId].players.push({ id: ws.id, name: playerName });
+                const color = await getColorFromPlayerName(playerName);
+                games[gameId].players.push({id: ws.id, name: playerName, color: color});
             }
             console.log(games[gameId].players);
             // Log the updated player list for debugging
@@ -352,7 +429,10 @@ wss.on('connection', (ws) => {
             ws.send(JSON.stringify({
                 type: 'game-state',
                 gameId,
-                players: games[gameId].players.map((p) => p.name),
+                players: games[gameId].players.map((p) => ({
+                    name: p.name,
+                    color: p.color,
+                })),
                 host: games[gameId].host,
                 buzzResult: games[gameId].buzzed,
                 clearedClues: Array.from(games[gameId].clearedClues || new Set()),
@@ -365,7 +445,10 @@ wss.on('connection', (ws) => {
             // Notify all players
             broadcast(gameId, {
                 type: 'player-list-update',
-                players: games[gameId].players.map((p) => p.name),
+                players: games[gameId].players.map((p) => ({
+                    name: p.name,
+                    color: p.color,
+                })),
                 host: games[gameId].host,
             });
         }
@@ -588,7 +671,7 @@ setInterval(() => {
     createCategoryOfTheDay();
 }, 60000 * 60);
 
-function callOpenAi(model, prompt, temp = 1) {
+function callOpenAi(model, prompt, temp) {
     return openai.chat.completions.create({
         model: model,
         messages: [{role: "user", content: prompt}],
@@ -667,7 +750,7 @@ async function createBoardData(categories, model, host) {
             ]
         }
    `;
-    function callDeepseek(model, prompt, temp = 1) {
+    function callDeepseek(model, prompt, temp) {
         return deepseek.chat.completions.create({
             model: model,
             messages: [{role: "user", content: prompt}],
@@ -675,7 +758,7 @@ async function createBoardData(categories, model, host) {
             temperature: temp,
         });
     }
-    function callAnthropic(model, prompt, temp = .5) {
+    function callAnthropic(model, prompt, temp) {
         return anthropic.messages.create({
             model: model,
             temperature: temp,
@@ -713,9 +796,9 @@ async function createBoardData(categories, model, host) {
                 break;
         }
 
-        const firstBoardPromise = apiCall(model, prompt(firstCategories));
-        const secondBoardPromise = apiCall(model, prompt(secondCategories, true));
-        const finalBoardPromise = apiCall(model, finalPrompt(finalCategory));
+        const firstBoardPromise = apiCall(model, prompt(firstCategories), 0.1);
+        const secondBoardPromise = apiCall(model, prompt(secondCategories, true), 0.1);
+        const finalBoardPromise = apiCall(model, finalPrompt(finalCategory), 0.1);
 
         const [firstResponse, secondResponse, finalResponse] = await Promise.all([firstBoardPromise, secondBoardPromise, finalBoardPromise]);
 
@@ -733,7 +816,6 @@ async function createBoardData(categories, model, host) {
             finalJeopardy = JSON.parse(finalResponse.choices[0].message.content.replace(/```(?:json)?/g, "").trim());
         }
 
-
         const board = {
             host,
             model,
@@ -742,10 +824,16 @@ async function createBoardData(categories, model, host) {
             finalJeopardy,
         }
 
+        const response = await supabase
+            .from('profiles')
+            .select('id')
+            .eq('username', host.toLowerCase())
+            .single();
+        console.log(response);
         // Insert the board with the owner's ID
         const { data, error } = await supabase
             .from('jeopardy_boards')
-            .insert([{ board, owner: null }]);
+            .insert([{ board, owner: response.data.id }]);
 
         if (error) {
             console.error('[Server] Error saving board data:', error.message);

@@ -35,7 +35,7 @@ export default function MainPage() {
     useEffect(() => {
         const fetchUsername = async () => {
             if (user && profile) {
-                setPlayerName(profile.username);
+                setPlayerName(profile.displayname);
             } else {
                 setPlayerName("");
             }
@@ -52,6 +52,25 @@ export default function MainPage() {
                 if (message.type === 'category-of-the-day') {
                     setCotd(message.cotd);
                 }
+                if (message.type === 'lobby-created') {
+                    navigate(`/lobby/${message.gameId}`, {
+                        state: {
+                            playerName: playerName,
+                            isHost: true,
+                            players: message.players,
+                            categories: message.categories,
+                        },
+                    });
+                    console.log("help me");
+                    console.log(message.gameId);
+                    socket.send(
+                        JSON.stringify({
+                            type: 'request-lobby-state',
+                            gameId: message.gameId,
+                        })
+                    );
+                }
+
             };
 
             socket.send(
@@ -91,12 +110,6 @@ export default function MainPage() {
                     categories: handleGenerateRandomCategories(),
                 })
             );
-            navigate(`/lobby/${newGameId}`, {
-                state: {
-                    playerName: playerName,
-                    isHost: true,
-                },
-            });
         } else {
             sendErrorAlert();
         }

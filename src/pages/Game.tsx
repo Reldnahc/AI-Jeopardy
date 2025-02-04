@@ -6,6 +6,7 @@ import Sidebar from "../components/Sidebar.tsx";
 import {DrawingPath} from "../utils/drawingUtils.tsx";
 import FinalScoreScreen from "../components/FinalScoreScreen.tsx";
 import {useWebSocket} from "../contexts/WebSocketContext.tsx";
+import {Player} from "../types/Lobby.ts";
 
 export default function Game() {
     const {gameId} = useParams<{ gameId: string }>();
@@ -13,7 +14,7 @@ export default function Game() {
     const playerName = location.state?.playerName || 'Spectator';
     const [host, setHost] = useState<string | null>(null);
     const isHost = location.state?.isHost || false;
-    const [players, setPlayers] = useState<string[]>(location.state?.players || []);
+    const [players, setPlayers] = useState<Player[]>(location.state?.players || []);
     const [buzzResult, setBuzzResult] = useState<string | null>(null);
     const [isBuzzed, setIsBuzzed] = useState(false);
     const [selectedClue, setSelectedClue] = useState<Clue | null>(null);

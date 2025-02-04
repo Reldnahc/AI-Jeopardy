@@ -1,7 +1,8 @@
 import React from "react";
+import {Player} from "../types/Lobby.ts";
 
 interface WagerInputProps {
-    players: string[];
+    players: Player[];
     currentPlayer: string;
     isHost: boolean;
     scores: Record<string, number>;
@@ -27,15 +28,15 @@ const WagerInput: React.FC<WagerInputProps> = ({
                 <p>Waiting for players to place their wagers...</p>
             ) : (
                 players
-                    .filter((player) => player === currentPlayer) // Only show box for the current player
+                    .filter((player) => player.name === currentPlayer) // Only show box for the current player
                     .map((player) => {
                         return (
                             <div
-                                key={player}
+                                key={player.name}
                                 className="flex flex-row items-center mb-2"
                             >
-                                <span className="mr-2">{player}:</span>
-                                {scores[player] <= 0 ? (
+                                <span className="mr-2">{player.name}:</span>
+                                {scores[player.name] <= 0 ? (
                                     <span className="text-red-500">
                                         Wager Automatically Set to $0
                                     </span>
@@ -44,20 +45,20 @@ const WagerInput: React.FC<WagerInputProps> = ({
                                         <input
                                             type="number"
                                             min={0}
-                                            max={scores[player] || 0}
-                                            value={wagers[player] || ""}
+                                            max={scores[player.name] || 0}
+                                            value={wagers[player.name] || ""}
                                             onChange={(e) =>
                                                 handleWagerChange(
-                                                    player,
+                                                    player.name,
                                                     parseInt(e.target.value, 10)
                                                 )
                                             }
-                                            disabled={wagerSubmitted.includes(player)}
+                                            disabled={wagerSubmitted.includes(player.name)}
                                             className="w-[100px] p-1 mr-2 border border-gray-300 rounded"
                                         />
-                                        {!wagerSubmitted.includes(player) ? (
+                                        {!wagerSubmitted.includes(player.name) ? (
                                             <button
-                                                onClick={() => submitWager(player)}
+                                                onClick={() => submitWager(player.name)}
                                                 className="px-3 py-1 bg-green-600 text-white rounded cursor-pointer"
                                             >
                                                 Submit Wager

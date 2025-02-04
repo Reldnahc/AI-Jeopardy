@@ -6,7 +6,8 @@ const Signup = () => {
     const [username, setUsername] = useState(""); // New username field
     const [password, setPassword] = useState("");
     const [confirmPassword, setConfirmPassword] = useState("");
-    const [error, setError] = useState(""); // Error message
+    const [error, setError] = useState(""); // General error message
+    const [usernameError, setUsernameError] = useState(""); // Specific real-time error for username
     const [success, setSuccess] = useState(""); // Success message
     const [loading, setLoading] = useState(false); // Loading state
 
@@ -18,9 +19,7 @@ const Signup = () => {
                 .select("username")
                 .eq("username", username)
                 .single(); // Fetch the first match
-            console.log(data);
             if (error && error.code !== "PGRST116") {
-                // If the error is not because the username doesn't exist
                 console.error("Error checking username:", error);
                 return true;
             }
@@ -31,14 +30,51 @@ const Signup = () => {
         }
     };
 
-    // Function to handle signup process
+    const validateUsernameRegex = (username: string): string | null => {
+        const normalizedUsername = username.toLowerCase(); // Normalize to lowercase
+        const usernameRegex = /^[a-zA-Z][a-zA-Z0-9_ ]{2,15}$/; // Allow letters, numbers, underscores, and spaces
+
+        if (!usernameRegex.test(normalizedUsername)) {
+            return "Username must be 3-16 characters, start with a letter, and contain only letters, numbers, spaces, or underscores.";
+        }
+
+        if (/\s{2,}/.test(normalizedUsername)) {
+            return "Username cannot contain consecutive spaces.";
+        }
+
+        return null; // Username is valid
+    };
+
+
+    const handleUsernameChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
+        const input = e.target.value;
+        setUsername(input);
+
+        const normalizedInput = input.toLowerCase(); // Normalize to lowercase before validation
+
+        // Validate username format
+        const errorMessage = validateUsernameRegex(normalizedInput);
+        if (errorMessage) {
+            setUsernameError(errorMessage);
+        } else {
+            // Check if username is taken
+            const taken = await isUsernameTaken(normalizedInput);
+            if (taken) {
+                setUsernameError("Username is already taken. Please choose another.");
+            } else {
+                setUsernameError(""); // No error
+            }
+        }
+    };
+
+
     const handleSignup = async (e: { preventDefault: () => void }) => {
         e.preventDefault();
         setError("");
         setSuccess("");
         setLoading(true);
 
-        // Validate inputs
+        // General form validation
         if (!email || !username || !password || !confirmPassword) {
             setError("All fields are required.");
             setLoading(false);
@@ -49,9 +85,14 @@ const Signup = () => {
             setLoading(false);
             return;
         }
+        if (usernameError) {
+            setError("Please resolve username issues before signing up.");
+            setLoading(false);
+            return;
+        }
 
         try {
-            // Check if the username is already taken
+            // Check if the username is taken (final validation)
             const taken = await isUsernameTaken(username);
             if (taken) {
                 setError("Username is already taken. Please choose another.");
@@ -59,13 +100,13 @@ const Signup = () => {
                 return;
             }
 
-            // Create the user via Supabase Auth
             const { error } = await supabase.auth.signUp({
                 email: email.trim(),
                 password: password.trim(),
                 options: {
                     data: {
-                        username: username.trim(),
+                        username: username.trim().toLowerCase(),
+                        displayname: username.trim()
                     },
                 },
             });
@@ -73,9 +114,8 @@ const Signup = () => {
             if (error) {
                 setError(error.message);
             } else {
-                setSuccess("Please check your Email for a confirmation link.");
+                setSuccess("Please check your email for a confirmation link.");
             }
-
         } catch (err) {
             console.error("Unexpected error during signup:", err);
             setError("An unexpected error occurred. Please try again.");
@@ -102,7 +142,6 @@ const Signup = () => {
                         className="w-full p-3 border border-gray-300 rounded focus:outline-none focus:ring-2 focus:ring-blue-500"
                     />
                 </div>
-                {/* New Username Field */}
                 <div>
                     <label htmlFor="username" className="block text-blue-500 font-medium">
                         Username
@@ -111,14 +150,19 @@ const Signup = () => {
                         type="text"
                         id="username"
                         value={username}
-                        onChange={(e) => setUsername(e.target.value)}
+                        onChange={handleUsernameChange}
                         placeholder="Enter your username"
                         required
-                        className="w-full p-3 border border-gray-300 rounded focus:outline-none focus:ring-2 focus:ring-blue-500"
+                        className={`w-full p-3 border rounded focus:outline-none focus:ring-2 ${
+                            usernameError
+                                ? "border-red-500 focus:ring-red-500"
+                                : "border-gray-300 focus:ring-blue-500"
+                        }`}
                     />
+                    {usernameError && <p className="text-red-500 text-sm mt-1">{usernameError}</p>}
                 </div>
                 <div>
-                    <label htmlFor="password" className="block text-gray-700 font-medium">
+                    <label htmlFor="password" className="block text-blue-500 font-medium">
                         Password
                     </label>
                     <input
@@ -132,7 +176,7 @@ const Signup = () => {
                     />
                 </div>
                 <div>
-                    <label htmlFor="confirmPassword" className="block text-gray-700 font-medium">
+                    <label htmlFor="confirmPassword" className="block text-blue-500 font-medium">
                         Confirm Password
                     </label>
                     <input

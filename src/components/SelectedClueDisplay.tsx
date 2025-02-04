@@ -3,6 +3,7 @@ import { ReactSketchCanvas } from "react-sketch-canvas";
 import { convertToSVG, DrawingPath } from "../utils/drawingUtils";
 import { Clue } from "../types";
 import { useWebSocket } from "../contexts/WebSocketContext.tsx";
+import {Player} from "../types/Lobby.ts";
 
 interface SelectedClueDisplayProps {
     localSelectedClue: Clue;
@@ -19,7 +20,7 @@ interface SelectedClueDisplayProps {
     drawingSubmitted: Record<string, boolean>;
     setDrawingSubmitted: React.Dispatch<React.SetStateAction<Record<string, boolean>>>;
     hostCanSeeAnswer: boolean;
-    players: string[];
+    players: Player[];
 }
 
 const SelectedClueDisplay: React.FC<SelectedClueDisplayProps> = ({

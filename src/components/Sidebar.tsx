@@ -2,12 +2,14 @@ import React from "react";
 import { Clue } from "../types";
 import {useWebSocket} from "../contexts/WebSocketContext.tsx";
 import {useProfile} from "../contexts/ProfileContext.tsx";
+import Avatar from "./common/Avatar.tsx";
+import {Player} from "../types/Lobby.ts";
 
 interface SidebarProps {
     gameId: string | undefined;
     isHost: boolean;
     host: string | null;
-    players: string[];
+    players: Player[];
     scores: Record<string, number>;
     buzzResult: string | null;
     isBuzzed: boolean;
@@ -94,43 +96,36 @@ const Sidebar: React.FC<SidebarProps> = ({
                     </h2>
                     <ul className="list-none p-0 m-0">
                         {players
-                            .filter((player) => !(players.length > 1 && player === host)) // Exclude the host if there are multiple players
+                            .filter((player) => !(players.length > 1 && player.name === host)) // Exclude the host if there are multiple players
                             .map((player, index) => (
                                 <li
                                     key={index}
-                                    className={`flex items-center p-2.5 ${
-                                        host === player ? "bg-amber-100" : "bg-gray-100"
-                                    } rounded-lg mb-2 text-base shadow-sm text-blue-500`}
+                                    className={`flex items-center p-2.5 bg-gray-100 rounded-lg mb-2 text-base shadow-sm text-blue-500`}
                                 >
-                                    <div
-                                        className={`w-8 h-8 rounded-full ${
-                                            host === player ? "bg-amber-400" : "bg-blue-500"
-                                        } flex justify-center items-center text-white font-bold mr-2.5`}
-                                    >
-                                        {player.charAt(0).toUpperCase()}
-                                    </div>
-                                    <div className="flex flex-col flex-1">
-                    <span className={host === player ? "font-bold" : ""}>
-                        {player}
+                                    <Avatar name={player.name} size="8" color={player.color} />
+
+                                    <div className="flex flex-col flex-1 ml-3">
+                    <span className={host === player.name ? "font-bold" : ""}>
+                        {player.name}
                     </span>
                                         <span
                                             className={`-mt-1.5 font-bold text-sm ${
-                                                scores[player] < 0 ? "text-red-500" : "text-green-500"
+                                                scores[player.name] < 0 ? "text-red-500" : "text-green-500"
                                             }`}
                                         >
-                        ${scores[player] || 0}
+                        ${scores[player.name] || 0}
                     </span>
                                     </div>
                                     {isHost && (
                                         <div className="flex gap-2 ml-auto">
                                             <button
-                                                onClick={() => handleScoreUpdate(player, -lastQuestionValue)}
+                                                onClick={() => handleScoreUpdate(player.name, -lastQuestionValue)}
                                                 className="w-8 h-8 p-0 bg-red-500 text-white rounded-full flex items-center justify-center text-sm hover:bg-red-600"
                                             >
                                                 −
                                             </button>
                                             <button
-                                                onClick={() => handleScoreUpdate(player, lastQuestionValue)}
+                                                onClick={() => handleScoreUpdate(player.name, lastQuestionValue)}
                                                 className="w-8 h-8 p-0 bg-green-500 text-white rounded-full flex items-center justify-center text-sm hover:bg-green-600"
                                             >
                                                 ＋

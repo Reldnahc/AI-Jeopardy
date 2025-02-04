@@ -62,7 +62,7 @@ const LoginForm = () => {
                     ) : (
                         <>
                             <Login />
-                            <p className="mt-2 text-sm text-center text-blue-500">
+                            <p className="mt-2 text-sm text-center text-black">
                                 Need an account?<br/>
                                 <a
                                     href="#"

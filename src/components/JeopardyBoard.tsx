@@ -4,7 +4,8 @@ import JeopardyGrid from "./JeopardyGrid"; // Import the grid component
 import WagerInput from "./WagerInput"; // Import the wager input component
 import { DrawingPath} from "../utils/drawingUtils.tsx";
 import SelectedClueDisplay from "./SelectedClueDisplay.tsx";
-import {useWebSocket} from "../contexts/WebSocketContext.tsx"; // Import the selected clue component
+import {useWebSocket} from "../contexts/WebSocketContext.tsx";
+import {Player} from "../types/Lobby.ts"; // Import the selected clue component
 
 interface JeopardyBoardProps {
     boardData: Category[];
@@ -13,7 +14,7 @@ interface JeopardyBoardProps {
     selectedClue: Clue | null;
     gameId: string;
     clearedClues: Set<string>; // Add clearedClues
-    players: string[];         // Prop to track players in the game
+    players: Player[];         // Prop to track players in the game
     scores: Record<string, number>; // Player scores
     currentPlayer: string; // New prop for the current player
     allWagersSubmitted: boolean;

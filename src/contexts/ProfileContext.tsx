@@ -4,10 +4,15 @@ import {useAuth} from "./AuthContext.tsx";
 
 // Define the shape of the data you expect from the "profiles" table
 export interface Profile {
+    displayname: string;
     id: string;
     username: string;
-    role: string | null; // Admin, Privileged, or Default
+    role: string; // Admin, Privileged, or Default
     tokens: number;
+    bio?: string;
+    boards_generated?: number;
+    games_finished?: number;
+    games_won?: number;
 }
 
 // Context value type definition
