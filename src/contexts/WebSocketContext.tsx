@@ -1,5 +1,6 @@
 import React, { createContext, useContext, useRef, useEffect, useState } from "react";
 import {useProfile} from "./ProfileContext.tsx";
+import {useAuth} from "./AuthContext.tsx";
 
 interface WebSocketContextType {
     socket: WebSocket | null;
@@ -13,39 +14,25 @@ const WebSocketContext = createContext<WebSocketContextType | null>(null);
 export const WebSocketProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
     const socketRef = useRef<WebSocket | null>(null);
     const [isSocketReady, setIsSocketReady] = useState(false);
-    const { profile } = useProfile();
+    const [hasSentJoinMessage, setHasSentJoinMessage] = useState(false);
+    const { profile, error} = useProfile();
+    const { loading } = useAuth();
 
     useEffect(() => {
-        if (!profile) return;
         if (!socketRef.current ) {
             // Initialize WebSocket connection
             //socketRef.current = new WebSocket("wss://reldnahc.duckdns.org");
             socketRef.current = new WebSocket("ws://localhost:3001");
 
             // Handle successful connection
+
             socketRef.current.onopen = () => {
                 console.log("WebSocket connected");
-                setIsSocketReady(true); // Set ready state to true
-                const currentPage = location.hash;
-                console.log("Current page:", currentPage);
+                setIsSocketReady(true); // Mark socket as ready
 
-                const gameId = currentPage.split('/')[2];
-                let playerName = '';
-                if (profile) {
-                     playerName = profile.displayname;
-                }
-
-                const action = currentPage.includes('/lobby') ? 'join-lobby' :
-                    currentPage.includes('/game') ? 'join-game' : null;
-                if (action){
-                    socketRef.current?.send(JSON.stringify({
-                        type: action,
-                        gameId,
-                        playerName,
-                    }));
-                }
             };
-            
+
+
             // Handle socket errors
             socketRef.current.onerror = (error) => {
                 console.error("WebSocket error:", error);
@@ -62,7 +49,44 @@ export const WebSocketProvider: React.FC<{ children: React.ReactNode }> = ({ chi
             console.log("WebSocket initialized:", socketRef.current);
         }
 
-    }, [profile]);
+    }, []);
+
+    const sendJoinMessage = () => {
+
+        if (socketRef.current && isSocketReady) {
+
+            const currentPage = location.hash;
+            const playerName = profile?.displayname; // Use profile when available
+            const gameId = currentPage.split('/')[2];
+            const action = currentPage.includes('/lobby')
+                ? 'join-lobby'
+                : currentPage.includes('/game')
+                    ? 'join-game'
+                    : null;
+
+            if (action) {
+                socketRef.current?.send(
+                    JSON.stringify({
+                        type: action,
+                        gameId,
+                        playerName,
+                    })
+                );
+                console.log(`Sent ${action} message with playerName: ${playerName}`);
+            }
+        }
+    };
+
+    // Retry sending the join message when profile or loading state changes
+    useEffect(() => {
+        console.log("profile");
+        console.log(profile);
+        if (profile && isSocketReady && !hasSentJoinMessage) {
+            console.log("Sending join message...");
+            sendJoinMessage(); // Trigger join message when profile becomes available
+            setHasSentJoinMessage(true);
+        }
+    }, [profile, error, isSocketReady, hasSentJoinMessage, loading]);
 
     return (
         <WebSocketContext.Provider value={{ socket: socketRef.current, isSocketReady }}>

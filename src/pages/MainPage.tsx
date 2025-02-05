@@ -4,17 +4,18 @@ import { useWebSocket } from "../contexts/WebSocketContext.tsx";
 import randomCategoryList from "../data/randomCategories.ts";
 import {useAuth} from "../contexts/AuthContext.tsx";
 import {useProfile} from "../contexts/ProfileContext.tsx";
+import {useAlert} from "../contexts/AlertContext.tsx";
 
 export default function MainPage() {
-    const [playerName, setPlayerName] = useState('');
     const [gameId, setGameId] = useState('');
     const [cotd, setCotd] = useState({
-        category: "Science & Nature",
-        description: "Explore the wonders of the natural world and the marvels of modern science."
+        category: "Connecting to server...",
+        description: ""
     });
 
+    const { showAlert } = useAlert();
     const { user } = useAuth();
-    const { profile } = useProfile();
+    const { profile, loading: profileLoading, refetchProfile } = useProfile();
     const { socket, isSocketReady } = useWebSocket();
     const navigate = useNavigate();
 
@@ -33,19 +34,7 @@ export default function MainPage() {
     );
 
     useEffect(() => {
-        const fetchUsername = async () => {
-            if (user && profile) {
-                setPlayerName(profile.displayname);
-            } else {
-                setPlayerName("");
-            }
-        };
-
-        fetchUsername();
-    }, [user, profile]);
-
-    useEffect(() => {
-        if (socket && isSocketReady) {
+        if (socket && isSocketReady && profile) {
             socket.onmessage = (event) => {
                 const message = JSON.parse(event.data);
                 console.log(message);
@@ -53,15 +42,15 @@ export default function MainPage() {
                     setCotd(message.cotd);
                 }
                 if (message.type === 'lobby-created') {
+                    console.log( "received 'lobby-created' message");
                     navigate(`/lobby/${message.gameId}`, {
                         state: {
-                            playerName: playerName,
+                            playerName: profile.displayname,
                             isHost: true,
                             players: message.players,
                             categories: message.categories,
                         },
                     });
-                    console.log("help me");
                     console.log(message.gameId);
                     socket.send(
                         JSON.stringify({
@@ -79,7 +68,7 @@ export default function MainPage() {
                 })
             );
         }
-    }, [socket, isSocketReady]);
+    }, [socket, isSocketReady, profile]);
 
     const handleGenerateRandomCategories = () => {
         const shuffledCategories = randomCategoryList.sort(() => 0.5 - Math.random());
@@ -89,52 +78,115 @@ export default function MainPage() {
 
 
     function sendErrorAlert() {
-        alert(
-            'Connection to Websockets failed. If you are using an adblocker please disable it and refresh the page. Otherwise try again later.'
+        showAlert(
+            <span>
+                <span className="text-red-500 font-bold text-xl">Connection to Websockets failed.</span><br/>
+                <span className="text-gray-900 font-semibold"> If you are using an adblocker please disable it and refresh the page. Otherwise try again.</span>
+            </span>,
+            [
+                {
+                    label: "Okay",
+                    actionValue: "okay",
+                    styleClass: "bg-green-500 text-white hover:bg-green-600",
+                }
+            ]
         );
     }
 
     const handleCreateGame = async () => {
         if (!user) {
-            alert('Please log in to create a game.');
+            showAlert(
+                <span>
+                <span className="text-red-500 font-bold text-xl">Please log in to create a game.</span><br/>
+            </span>,
+                [
+                    {
+                        label: "Okay",
+                        actionValue: "okay",
+                        styleClass: "bg-green-500 text-white hover:bg-green-600",
+                    }
+                ]
+            );
             return;
         }
-        if (socket && isSocketReady) {
+        if (socket && isSocketReady && profile) {
             const newGameId = Math.random().toString(36).substr(2, 8).toUpperCase();
 
             socket.send(
                 JSON.stringify({
                     type: 'create-lobby',
                     gameId: newGameId,
-                    host: playerName,
+                    host: profile.displayname,
                     categories: handleGenerateRandomCategories(),
                 })
             );
+            console.log('sent create-lobby message');
         } else {
             sendErrorAlert();
         }
     };
 
-    const handleJoinGame = () => {
-        if (!user) {
-            alert('Please log in to create a game.');
-            return;
-        }
+    const handleJoinGame = async () => {
         if (!gameId.trim()) {
-            alert('Please a valid game ID.');
+            showAlert(
+                <span>
+                    <span className="text-red-500 font-bold text-xl">Please enter a valid Game ID.</span><br/>
+                </span>,
+                [
+                    {
+                        label: "Okay",
+                        actionValue: "okay",
+                        styleClass: "bg-green-500 text-white hover:bg-green-600",
+                    }]
+            );
             return;
         }
+
+        if (!user) {
+            const action = await showAlert(
+                <span>
+                    <span className="text-red-500 font-bold text-xl">You are not logged in.</span><br/>
+                    <span
+                        className="text-gray-900 font-bold text-xl">Are you sure you want to play as a guest?</span><br/>
+                </span>,
+                [
+                    {
+                        label: "Go Back",
+                        actionValue: "return",
+                        styleClass: "bg-red-500 text-white hover:bg-red-600",
+                    },
+                    {
+                        label: "Continue",
+                        actionValue: "continue",
+                        styleClass: "bg-green-500 text-white hover:bg-green-600",
+                    },
+
+                ]
+            );
+
+            if (action === "return") {
+                return;
+            }
+        }
+
+        // Wait for the profile to fully load
+        if (profileLoading) {
+            console.log("Waiting for profile to finish loading...");
+            await refetchProfile(); // Optional - ensures profile is up-to-date
+        }
+
         if (socket && isSocketReady) {
+            const name = profile ? profile.displayname : '';
             socket.send(
                 JSON.stringify({
                     type: 'join-lobby',
                     gameId,
-                    playerName: playerName.trim(),
+                    playerName: name.trim(),
                 })
             );
             navigate(`/lobby/${gameId}`, {
                 state: {
-                    playerName: playerName.trim(),
+                    playerName: name.trim(),
                     isHost: false,
                 },
             });

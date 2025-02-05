@@ -12,6 +12,7 @@ import Profile from "./pages/Profile.tsx";
 import {ProfileProvider} from "./contexts/ProfileContext.tsx";
 import RecentBoards from "./pages/RecentBoards.tsx";
 import {UserProfileProvider} from "./contexts/UserProfileContext.tsx";
+import {AlertProvider} from "./contexts/AlertContext.tsx";
 ReactDOM.createRoot(document.getElementById('root')!).render(
     <React.StrictMode>
         <HashRouter>
@@ -19,15 +20,17 @@ ReactDOM.createRoot(document.getElementById('root')!).render(
                 <ProfileProvider>
                     <UserProfileProvider>
                         <WebSocketProvider>
-                            <Header/>
-                            <Routes>
-                                <Route path="/" element={<MainPage />} />
-                                <Route path="/lobby/:gameId" element={<Lobby />} />
-                                <Route path="/game/:gameId" element={<Game />} />
-                                <Route path="/profile/:username" element={<Profile />} />
-                                <Route path="/recent-boards" element={<RecentBoards />} />
-                                {/* Add other routes for Game, etc., here */}
-                            </Routes>
+                            <AlertProvider>
+                                <Header/>
+                                <Routes>
+                                    <Route path="/" element={<MainPage />} />
+                                    <Route path="/lobby/:gameId" element={<Lobby />} />
+                                    <Route path="/game/:gameId" element={<Game />} />
+                                    <Route path="/profile/:username" element={<Profile />} />
+                                    <Route path="/recent-boards" element={<RecentBoards />} />
+                                    {/* Add other routes for Game, etc., here */}
+                                </Routes>
+                            </AlertProvider>
                         </WebSocketProvider>
                     </UserProfileProvider>
                 </ProfileProvider>

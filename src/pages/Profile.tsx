@@ -30,7 +30,8 @@ const Profile: React.FC = () => {
     const [boards, setBoards] = useState<Board[]>([]); // State for the user's boards
     const [loading, setLoading] = useState<boolean>(true);
     const [error, setError] = useState<string | null>(null);
-    const [selectedColor, setSelectedColor] = useState<string | null>(null); // State for selected color
+    const [selectedColor, setSelectedColor] = useState<string | null>(null);
+    const [selectedTextColor, setSelectedTextColor] = useState<string | null>(null);
 
     const { user } = useAuth();
     const { userProfile, updateColor} = useUserProfile();
@@ -84,6 +85,7 @@ const Profile: React.FC = () => {
                 return;
             }
             setSelectedColor(userProfileData.color);
+            setSelectedTextColor(userProfileData.text_color);
 
             setLoading(false);
         };
@@ -96,13 +98,22 @@ const Profile: React.FC = () => {
         console.log("userProfile", userProfile);
         if (userProfile && user && userProfile.id === user.id){
             setSelectedColor(userProfile.color);
+            setSelectedTextColor(userProfile.text_color);
         }
     }, [userProfile]);
 
-    const saveSelectedColor = async (color: string) => {
+    const saveSelectedColor = async (color: string, table: string) => {
         if (!user) return;
-        await updateColor(color);
-        setSelectedColor(color); // Update the local state
+        await updateColor(color, table);
+
+        switch (table){
+            case 'color':
+                setSelectedColor(color);
+                break;
+            case 'text_color':
+                setSelectedTextColor(color);
+                break
+        }
 
     };
 
@@ -113,6 +124,15 @@ const Profile: React.FC = () => {
         "bg-rose-500", "bg-pink-500", "bg-fuchsia-500", "bg-purple-500",
         "bg-violet-500", "bg-gray-500", "bg-stone-500", "bg-slate-500",
         "bg-zinc-500", "bg-black", "bg-white"
+    ];
+
+    const textColors = [
+        "text-blue-500", "text-indigo-500", "text-cyan-500", "text-sky-500",
+        "text-green-500", "text-emerald-500", "text-teal-500", "text-lime-500",
+        "text-yellow-500", "text-amber-500", "text-orange-500", "text-red-500",
+        "text-rose-500", "text-pink-500", "text-fuchsia-500", "text-purple-500",
+        "text-violet-500", "text-gray-500", "text-stone-500", "text-slate-500",
+        "text-zinc-500", "text-black", "text-white"
     ];
 
 
@@ -140,7 +160,7 @@ const Profile: React.FC = () => {
                 {/* Profile Header */}
                 <div className="flex items-center space-x-4">
                     <div className="flex w-16">
-                        <Avatar name={username || 'A'} size="16" color={selectedColor} />
+                        <Avatar name={username || 'A'} size="16" color={selectedColor} textColor={selectedTextColor}/>
                     </div>
                     <div>
                         <h1 className="text-2xl text-blue-500 font-bold">{profile.displayname}</h1>
@@ -156,7 +176,7 @@ const Profile: React.FC = () => {
                     <div className="mt-6">
                         <h2 className="text-2xl font-semibold mb-4">User Settings</h2>
                         <div className="ml-2">
-                            <h3 className="text-xl font-semibold mb-4">Icon Color</h3>
+                            <h3 className="text-xl font-semibold mb-4">Background Color</h3>
                             <div className="flex flex-wrap gap-2">
                                 {colors.map((color) => (
                                     <div
@@ -164,7 +184,21 @@ const Profile: React.FC = () => {
                                         className={`w-8 h-8 rounded-full cursor-pointer ${color} ${
                                             selectedColor === color ? "ring-4 ring-blue-400" : ""
                                         }`} // Highlight the selected color
-                                        onClick={() => saveSelectedColor(color)} // Set the selected color on click
+                                        onClick={() => saveSelectedColor(color, 'color')} // Set the selected color on click
+                                    ></div>
+                                ))}
+                            </div>
+                        </div>
+                        <div className="ml-2">
+                            <h3 className="text-xl font-semibold mb-4">Icon Color</h3>
+                            <div className="flex flex-wrap gap-2">
+                                {textColors.map((color) => (
+                                    <div
+                                        key={color}
+                                        className={`w-8 h-8 rounded-full cursor-pointer ${color.replace('text','bg')} ${
+                                            selectedTextColor === color ? "ring-4 ring-blue-400" : ""
+                                        }`} // Highlight the selected color
+                                        onClick={() => saveSelectedColor(color, 'text_color')} // Set the selected color on click
                                     ></div>
                                 ))}
                             </div>

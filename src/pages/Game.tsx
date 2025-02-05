@@ -11,7 +11,7 @@ import {Player} from "../types/Lobby.ts";
 export default function Game() {
     const {gameId} = useParams<{ gameId: string }>();
     const location = useLocation();
-    const playerName = location.state?.playerName || 'Spectator';
+    const playerName = location.state?.playerName || '';
     const [host, setHost] = useState<string | null>(null);
     const isHost = location.state?.isHost || false;
     const [players, setPlayers] = useState<Player[]>(location.state?.players || []);
@@ -317,7 +317,7 @@ export default function Game() {
 
     return (
         <div
-            className="flex h-[calc(100vh-4.5rem)] w-screen overflow-hidden font-sans bg-gradient-to-br from-[#2e3a59] to-[#1c2538]"
+            className="flex h-[calc(100vh-5.5rem)] w-screen overflow-hidden font-sans bg-gradient-to-br from-[#2e3a59] to-[#1c2538]"
         >
             {/* Sidebar */}
             <Sidebar

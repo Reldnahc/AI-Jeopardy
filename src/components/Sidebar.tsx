@@ -96,25 +96,33 @@ const Sidebar: React.FC<SidebarProps> = ({
                     </h2>
                     <ul className="list-none p-0 m-0">
                         {players
-                            .filter((player) => !(players.length > 1 && player.name === host)) // Exclude the host if there are multiple players
                             .map((player, index) => (
                                 <li
                                     key={index}
-                                    className={`flex items-center p-2.5 bg-gray-100 rounded-lg mb-2 text-base shadow-sm text-blue-500`}
+                                    className={`flex items-center p-2.5 rounded-lg mb-2 text-base shadow-sm text-blue-500 ${
+                                        host === player.name ? "bg-yellow-200" : "bg-gray-100"
+                                    }`}
                                 >
-                                    <Avatar name={player.name} size="8" color={player.color} />
+                                    <Avatar name={player.name} size="8" color={player.color} textColor={player.text_color}/>
 
                                     <div className="flex flex-col flex-1 ml-3">
-                    <span className={host === player.name ? "font-bold" : ""}>
-                        {player.name}
-                    </span>
-                                        <span
-                                            className={`-mt-1.5 font-bold text-sm ${
-                                                scores[player.name] < 0 ? "text-red-500" : "text-green-500"
-                                            }`}
-                                        >
-                        ${scores[player.name] || 0}
-                    </span>
+                                        <span className={host === player.name ? "font-bold" : ""}>
+                                            {player.name}
+                                        </span>
+                                        {host === player.name && players.length > 1 ? (
+                                            <span className="text-yellow-500 -mt-2 text-sm">
+                                                Host
+                                                </span>
+                                        ) :(
+                                            <span
+                                                className={`-mt-1.5 font-bold text-sm ${
+                                                    scores[player.name] < 0 ? "text-red-500" : "text-green-500"
+                                                }`}
+                                            >
+                                            ${scores[player.name] || 0}
+                                        </span>
+                                        )}
+
                                     </div>
                                     {isHost && (
                                         <div className="flex gap-2 ml-auto">

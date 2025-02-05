@@ -4,6 +4,8 @@ import { useAuth } from "../../contexts/AuthContext.tsx";
 import { useProfile } from "../../contexts/ProfileContext.tsx";
 import LoginForm from "./LoginForm.tsx";
 import {supabase} from "../../supabaseClient.ts";
+import Avatar from "./Avatar.tsx";
+import {useUserProfile} from "../../contexts/UserProfileContext.tsx";
 
 const Header: React.FC = () => {
     const [dropdownOpen, setDropdownOpen] = useState(false); // Profile dropdown state
@@ -11,6 +13,7 @@ const Header: React.FC = () => {
     //const navigate = useNavigate();
     const { user } = useAuth();
     const { profile } = useProfile();
+    const { userProfile } = useUserProfile();
     // Toggle the profile dropdown if logged in.
     const toggleDropdown = () => setDropdownOpen(!dropdownOpen);
 
@@ -51,14 +54,15 @@ const Header: React.FC = () => {
 
                 {/* Right Section: Login/Profile Button and Hamburger Menu */}
                 <div className="flex items-center space-x-4">
-                    {user && profile ? (
+                    {user && profile && userProfile ? (
                         // If logged in, show a profile button with a dropdown
                         <div className="hidden relative md:block">
                             <button
                                 onClick={toggleDropdown}
                                 className="flex items-center text-xl px-4 py-2 rounded hover:bg-blue-400 focus:outline-none"
                             >
-                                <span>{profile.displayname}</span>
+                                <Avatar name={profile.username} size="10" color={userProfile.color} textColor={userProfile.text_color}/>
+                                <span className="ml-3" >{profile.displayname}</span>
                                 <svg
                                     xmlns="http://www.w3.org/2000/svg"
                                     className="h-4 w-4 ml-2"

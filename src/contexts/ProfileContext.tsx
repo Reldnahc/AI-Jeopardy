@@ -36,13 +36,12 @@ export const ProfileProvider: React.FC<{ children: ReactNode }> = ({ children })
     const [profile, setProfile] = useState<Profile | null>(null);
     const [profileLoading, setProfileLoading] = useState(true);
     const [error, setError] = useState<string | null>(null);
-    const { user } = useAuth();
+    const { user, loading } = useAuth();
 
     // Fetch the profile from Supabase
     const fetchProfile = async () => {
         try {
             setProfileLoading(true);
-
             if (user) {
                 const { data, error } = await supabase
                     .from('profiles') // Replace with your table name
@@ -55,7 +54,13 @@ export const ProfileProvider: React.FC<{ children: ReactNode }> = ({ children })
                 }
                 setProfile(data); // Set the profile in state
             } else {
-                setProfile(null);
+                setProfile({
+                    displayname: "", // Default display name
+                    id: "placeholder-id", // Generic placeholder ID
+                    username: "", // Default username
+                    role: "Default", // Default role
+                    tokens: 0, // Default tokens value
+                });
             }
         } catch (err: any) {
             console.error('Error fetching profile:', err.message);
@@ -67,8 +72,10 @@ export const ProfileProvider: React.FC<{ children: ReactNode }> = ({ children })
 
     // Fetch the profile on component mount
     useEffect(() => {
-        fetchProfile();
-    }, [user]);
+        if (loading === false){
+            fetchProfile();
+        }
+    }, [loading]);
 
     // Provide the context value
     return (

@@ -6,6 +6,7 @@ import {useAuth} from "./AuthContext.tsx";
 export interface UserProfile {
     id: string;
     color: string;
+    text_color: string;
 }
 
 // Context value type definition
@@ -14,7 +15,7 @@ interface UserProfileContextType {
     loading: boolean;
     error: string | null;
     refetchProfile: () => Promise<void>; // Function to refetch profile
-    updateColor: (newColor: string) => Promise<void>; // Function to update the user's colo
+    updateColor: (newColor: string, table: string) => Promise<void>; // Function to update the user's colo
 }
 
 // Default value for the context
@@ -59,7 +60,7 @@ export const UserProfileProvider: React.FC<{ children: ReactNode }> = ({ childre
         }
     };
 
-    const updateColor = async (newColor: string) => {
+    const updateColor = async (newColor: string, table: string) => {
         if (!user) {
             console.error('No user logged in, cannot update color');
             return;
@@ -69,18 +70,19 @@ export const UserProfileProvider: React.FC<{ children: ReactNode }> = ({ childre
             // Update color in the database
             const { error } = await supabase
                 .from('user_profiles')
-                .update({ color: newColor })
+                .update({[table]: newColor })
                 .eq('id', user.id);
 
             if (error) throw new Error(error.message);
 
             // Update the context state with the new color
-            setUserProfile((prev) => prev ? { ...prev, color: newColor } : null);
+            setUserProfile((prev) => prev ? { ...prev, [table]: newColor } : null);
         } catch (err: any) {
             console.error('Error updating color:', err.message);
             setError(err.message);
         }
     };
+
 
     // Fetch the profile on component mount
     useEffect(() => {

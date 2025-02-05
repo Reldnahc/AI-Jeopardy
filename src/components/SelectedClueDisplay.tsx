@@ -182,14 +182,19 @@ const SelectedClueDisplay: React.FC<SelectedClueDisplayProps> = ({
                     </button>
                 )}
 
-                {drawings &&
-                    !Array.isArray(drawings) &&
-                    Object.entries(drawings).map(([player, drawingString]) => (
-                        <div key={player} className="mb-5 z-0">
-                            <h2>{player}'s answer:</h2>
-                            {convertToSVG(drawingString)}
-                        </div>
-                    ))}
+                <div className="flex flex-wrap gap-4">
+                    {drawings &&
+                        !Array.isArray(drawings) &&
+                        Object.entries(drawings).map(([player, drawingString]) => (
+                            <div key={player} className="mb-5 z-0 w-auto">
+                                <div className="flex flex-col items-center">
+                                    {/* Customize avatar display */}
+                                    <h2 className="text-center text-sm font-semibold mb-2">{player}'s answer:</h2>
+                                    {convertToSVG(drawingString)}
+                                </div>
+                            </div>
+                        ))}
+                </div>
             </div>
         </div>
     );

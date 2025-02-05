@@ -82,7 +82,7 @@ async function getColorFromPlayerName(username) {
 
     const { data, error } = await supabase
         .from('user_profiles')
-        .select('color, id')
+        .select('color, text_color')
         .eq('id', id)
         .single();
 
@@ -91,7 +91,8 @@ async function getColorFromPlayerName(username) {
         return null; // Return null or throw an error, based on your use case
     }
     console.log(data);
-    return data?.color;
+
+    return data;
 }
 
 wss.on('connection', (ws) => {
@@ -122,6 +123,7 @@ wss.on('connection', (ws) => {
                 players: games[data.gameId].players.map((p) => ({
                     name: p.name,
                     color: p.color,
+                    text_color: p.text_color,
                 })),
                 host: games[data.gameId].host,
                 categories: games[data.gameId].categories || [],
@@ -131,15 +133,15 @@ wss.on('connection', (ws) => {
             const {gameId, host, categories} = data;
 
             if (games[gameId]) {
-                games[gameId].host = host;
+                //throw error? this shouldnt happen
 
             } else {
                 const color = await getColorFromPlayerName(host);
                 // Create a new game
-                console.log(`Creating new game ${gameId} with host ${host} with color ${color} and categories ${categories}`);
+                console.log(`Creating new game ${gameId} with host ${host} with color ${color.color} and categories ${categories}`);
                 games[gameId] = {
                     host: host,
-                    players: [{id: ws.id, name: host, color: color}],
+                    players: [{id: ws.id, name: host, color: color.color, text_color: color.text_color}],
                     inLobby: true,
                     categories: categories || [],
                     lockedCategories: {
@@ -152,40 +154,57 @@ wss.on('connection', (ws) => {
                     type: 'lobby-created',
                     gameId: gameId,
                     categories: categories || [],
-                    players: [{id: ws.id, name: host, color: color}],
+                    players: [{id: ws.id, name: host, color: color.color, text_color: color.text_color}],
                 }));
             }
         }
 
         if (data.type === 'join-lobby') {
             const {gameId, playerName} = data;
-            // Reject blank player names
-            if (!playerName || !playerName.trim()) {
-                ws.send(JSON.stringify({type: 'error', message: 'Player name cannot be blank.'}));
-                return;
-            }
 
+            // Reject blank player names
             if (!games[gameId]) {
                 ws.send(JSON.stringify({type: 'error', message: 'Lobby does not exist!'}));
                 return;
             }
 
-            // Check if the player is already in the game based on socket ID
-            const existingPlayer = games[gameId].players.find((p) => p.id === ws.id);
+            const existingPlayer = games[gameId].players.find((p) => p.id === ws.id || p.name === playerName);
+            // Reject if the player already exists
             if (existingPlayer) {
                 ws.send(JSON.stringify({type: 'info', message: 'You are already in the lobby.'}));
                 return;
             }
 
-            // Add the player to the game
-            if (!games[gameId].players.includes(playerName)) {
-                const color = await getColorFromPlayerName(playerName);
-                games[gameId].players.push({id: ws.id, name: playerName, color: color});
+            let actualName = playerName;
+
+            // Assign "Guest" if name is blank or whitespace
+            if (!playerName || !playerName.trim()) {
+                let guestIndex = 1;
+                const usedNames = games[gameId].players.map((player) => player.name);
+
+                // Increment guest index until an unused guest name is found
+                while (usedNames.includes(`Guest ${guestIndex}`)) {
+                    guestIndex++;
+                }
+                actualName = `Guest ${guestIndex}`;
             }
+
+            // Add the player to the game
+            const msg = await getColorFromPlayerName(actualName);
+            let color;
+            let text_color;
+
+            if (msg && msg.color) color = msg.color;
+            else color = "bg-blue-500";
+            if (msg && msg.text_color) color = msg.text_color;
+            else text_color = "text-white";
+
+            // Add the player
+            games[gameId].players.push({ id: ws.id, name: actualName, color: color,text_color: text_color });
+            console.log(`Player ${actualName} joined game ${gameId}`);
 
             // Log the updated player list for debugging
             console.log(`Players in game ${gameId}:`, games[gameId].players);
-            console.log(games[gameId].categories);
 
             ws.send(JSON.stringify({
                 type: 'lobby-state',
@@ -193,6 +212,7 @@ wss.on('connection', (ws) => {
                 players: games[gameId].players.map((p) => ({
                     name: p.name,
                     color: p.color,
+                    text_color: p.text_color,
                 })),
                 host: games[gameId].host,
                 categories: games[gameId].categories || [],
@@ -203,6 +223,7 @@ wss.on('connection', (ws) => {
                 players: games[gameId].players.map((p) => ({
                     name: p.name,
                     color: p.color,
+                    text_color: p.text_color,
                 })),
                 host: games[gameId].host,
             });
@@ -234,10 +255,8 @@ wss.on('connection', (ws) => {
                 broadcast(gameId, {
                     type: 'start-game',
                     boardData: boardData,
-                    players: games[gameId].players.map((p) => ({
-                        name: p.name,
-                        color: p.color,
-                    })),
+                    host: host,
+
                 });
             }else{
                 console.log("error moving from lobby to game. game already in progress.");
@@ -299,16 +318,18 @@ wss.on('connection', (ws) => {
         }
 
         if (data.type === 'buzz') {
-            const {gameId, playerName} = data;
+            const { gameId } = data;
 
             if (games[gameId] && !games[gameId].buzzed) {
-                games[gameId].buzzed = playerName;
-
-                // Notify all players who buzzed first
-                broadcast(gameId, {
-                    type: 'buzz-result',
-                    playerName,
-                });
+                const player = games[gameId].players.find(player => player.id === ws.id);
+                if (player && player.name){
+                    games[gameId].buzzed = player.name;
+                    // Notify all players who buzzed first
+                    broadcast(gameId, {
+                        type: 'buzz-result',
+                        playerName: player.name,
+                    });
+                }
             }
         }
 
@@ -399,8 +420,6 @@ wss.on('connection', (ws) => {
 
         if (data.type === 'join-game') {
             const { gameId, playerName } = data;
-            // Reject blank player names
-            console.log(data);
             if (!playerName || !playerName.trim()) {
                 ws.send(JSON.stringify({ type: 'error', message: 'Player name cannot be blank.' }));
                 return;
@@ -415,13 +434,13 @@ wss.on('connection', (ws) => {
             const existingPlayer = games[gameId].players.find((p) => p.id === ws.id);
             if (existingPlayer) {
                 ws.send(JSON.stringify({ type: 'info', message: 'You are already in the game.' }));
-                return;
+            } else {
+                if (!games[gameId].players.includes(playerName)) {
+                    const color = await getColorFromPlayerName(playerName);
+                    games[gameId].players.push({id: ws.id, name: playerName, color: color.color, text_color: color.text_color});
+                }
             }
 
-            if (!games[gameId].players.includes(playerName)) {
-                const color = await getColorFromPlayerName(playerName);
-                games[gameId].players.push({id: ws.id, name: playerName, color: color});
-            }
             console.log(games[gameId].players);
             // Log the updated player list for debugging
             console.log(`Players in game ${gameId}:`, games[gameId].players);
@@ -432,6 +451,7 @@ wss.on('connection', (ws) => {
                 players: games[gameId].players.map((p) => ({
                     name: p.name,
                     color: p.color,
+                    text_color: p.text_color,
                 })),
                 host: games[gameId].host,
                 buzzResult: games[gameId].buzzed,
@@ -448,10 +468,41 @@ wss.on('connection', (ws) => {
                 players: games[gameId].players.map((p) => ({
                     name: p.name,
                     color: p.color,
+                    text_color: p.text_color,
                 })),
                 host: games[gameId].host,
             });
         }
+
+        if (data.type === 'leave-game') {
+            const { gameId } = data;
+
+            console.log("game", games[gameId]);
+
+            if (games[gameId]) {
+
+                // Remove the player from the list of players in the game
+                games[gameId].players = games[gameId].players.filter((player) => {
+                    if (player.id === ws.id) {
+                        console.log(`Player ${player.name} is being removed from game ${gameId}`);
+                        return false; // Exclude this player from the filtered list
+                    }
+                    return true; // Include all other players
+                });
+
+                // Optional: Notify other players in the game that this player has left
+                broadcast(gameId, {
+                    type: 'player-list-update',
+                    players: games[gameId].players.map((p) => ({
+                        name: p.name,
+                        color: p.color,
+                        text_color: p.text_color,
+                    })),
+                    host: games[gameId].host,
+                });
+            }
+        }
+
 
         if (data.type === 'reveal-answer') {
             const {gameId} = data;
@@ -637,7 +688,11 @@ wss.on('connection', (ws) => {
             games[gameId].players = games[gameId].players.filter((p) => p.id !== ws.id);
             broadcast(gameId, {
                 type: 'player-list-update',
-                players: games[gameId].players.map((p) => p.name),
+                players: games[gameId].players.map((p) => ({
+                    name: p.name,
+                    color: p.color,
+                    text_color: p.text_color,
+                })),
                 host: games[gameId].host,
             });
         });
@@ -829,18 +884,20 @@ async function createBoardData(categories, model, host) {
             .select('id')
             .eq('username', host.toLowerCase())
             .single();
+
         console.log(response);
-        // Insert the board with the owner's ID
-        const { data, error } = await supabase
-            .from('jeopardy_boards')
-            .insert([{ board, owner: response.data.id }]);
 
-        if (error) {
-            console.error('[Server] Error saving board data:', error.message);
+        if (response.data && response.data.id){
+            const { data, error } = await supabase
+                .from('jeopardy_boards')
+                .insert([{ board, owner: response.data.id }]);
+            if (data) {
+                console.log('Board saved successfully:', data);
+            }
+            if (error) {
+                console.log('Error:', error);
+            }
         }
-
-        console.log('Jeopardy board saved successfully:', data);
-
 
         return {firstBoard, secondBoard, finalJeopardy};
     } catch (error) {

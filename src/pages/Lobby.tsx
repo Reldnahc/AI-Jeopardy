@@ -8,6 +8,7 @@ import HostControls from "../components/lobby/HostControls.tsx";
 import FinalJeopardyCategory from "../components/lobby/FinalJeopardyCategory.tsx";
 import CategoryBoard from "../components/lobby/CategoryBoard.tsx";
 import {Player} from "../types/Lobby.ts";
+import {useProfile} from "../contexts/ProfileContext.tsx";
 
 type LockedCategories = {
     firstBoard: boolean[]; // Jeopardy lock states
@@ -30,7 +31,6 @@ const Lobby: React.FC = () => {
         finalJeopardy: '',
     });
     const isHost = location.state?.isHost || false;
-    const playerName = location.state?.playerName || 'Spectator';
     const { gameId } = useParams<{ gameId: string }>();
     const [isLoading, setIsLoading] = useState(false);
     const [loadingMessage, setLoadingMessage] = useState('');
@@ -48,12 +48,9 @@ const Lobby: React.FC = () => {
 
     const { socket, isSocketReady } = useWebSocket();
     const navigate = useNavigate();
+    const { profile } = useProfile();
 
     useEffect(() => {
-        console.log('checking socket');
-        console.log(socket);
-        console.log(isSocketReady);
-
         if (socket && isSocketReady) {
             socket.onmessage = (event) => {
                 const message = JSON.parse(event.data);
@@ -110,22 +107,21 @@ const Lobby: React.FC = () => {
                     setLoadingMessage('Generating your questions');
                 }
 
-                if (message.type === 'start-game') {
+                if (message.type === 'start-game' && profile) {
                     setIsLoading(false);
                     socket.send(
                         JSON.stringify({
                             type: 'join-game',
                             gameId,
-                            playerName,
+                            playerName: profile.displayname,
                         })
                     );
-                    console.log(message.boardData.firstBoard);
                     navigate(`/game/${gameId}`, {
                         state: {
-                            playerName: playerName.trim(),
+                            playerName: profile.displayname.trim(),
                             isHost: isHost,
+                            host: host,
                             boardData: message.boardData,
-                            players: message.players,
                         },
                     });
                 }
@@ -166,6 +162,28 @@ const Lobby: React.FC = () => {
         }
     }, [isLoading]);
 
+    useEffect(() => {
+        const handlePageLeave = () => {
+            console.log('Page unloaded');
+            if (socket && gameId) {
+                console.log('sending leave game');
+
+                // Notify the server to remove the player from the game
+                socket.send(
+                    JSON.stringify({
+                        type: 'leave-game', // Message type for leaving the game
+                        gameId,            // The current game
+                    })
+                );
+            }
+        };
+
+        // Handle browser tab close, refresh, or manual navigation
+        window.addEventListener("beforeunload", handlePageLeave);
+
+    }, [gameId, socket]);
+
+
     const onToggleLock = (
         boardType: 'firstBoard' | 'secondBoard' | 'finalJeopardy',
         index: number
@@ -204,7 +222,6 @@ const Lobby: React.FC = () => {
                         JSON.stringify({
                             type: 'update-categories',
                             gameId,
-                            host: playerName,
                             categories: [
                                 ...updatedCategories.firstBoard,
                                 ...updatedCategories.secondBoard,
@@ -232,7 +249,6 @@ const Lobby: React.FC = () => {
                     JSON.stringify({
                         type: 'update-categories',
                         gameId,
-                        host: playerName,
                         categories: [
                             ...updatedCategories.firstBoard,
                             ...updatedCategories.secondBoard,
@@ -284,7 +300,6 @@ const Lobby: React.FC = () => {
                     JSON.stringify({
                         type: 'update-categories',
                         gameId,
-                        host: playerName,
                         categories: [
                             ...updatedCategories.firstBoard,
                             ...updatedCategories.secondBoard,
@@ -299,8 +314,8 @@ const Lobby: React.FC = () => {
     };
 
     const handleCreateGame = async () => {
-        if (!playerName.trim()) {
-            alert('Please enter your name.');
+        if (!profile) {
+            alert('You need to be logged in to create a game.');
             return;
         }
         if (
@@ -320,7 +335,7 @@ const Lobby: React.FC = () => {
                     JSON.stringify({
                         type: 'create-game',
                         gameId,
-                        host: playerName,
+                        host: profile.displayname,
                         categories: [
                             ...categories.firstBoard,
                             ...categories.secondBoard,
@@ -344,7 +359,7 @@ const Lobby: React.FC = () => {
     return isLoading ? (
         <LoadingScreen message={loadingMessage} loadingDots={loadingDots} />
     ) : (
-        <div className="flex flex-col md:flex-row h-[calc(100vh-4.5rem)] w-screen overflow-hidden bg-[#2e3a59] ">
+        <div className="flex flex-col md:flex-row h-[calc(100vh-5.5rem)] w-screen overflow-hidden bg-[#2e3a59] ">
             {/* Sidebar Container */}
             <div
                 className={`
