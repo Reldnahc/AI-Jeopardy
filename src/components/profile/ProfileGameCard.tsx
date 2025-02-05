@@ -13,25 +13,26 @@ const ProfileGameCard = ({ game }: ProfileGameCardProps) => {
     const toggleCollapse = () => setIsCollapsed(!isCollapsed);
 
     return (
-        <div className="bg-[#AAA] border-[#ddd] border shadow-md rounded-lg p-4 mb-4"> {/* Reduced padding and margin */}
+        <div className="bg-white border border-gray-200 shadow-md rounded-lg p-6 mb-6">
             {/* Header with toggle button */}
             <div className="flex justify-between items-center">
-                <h2 className="text-lg font-bold"> {/* Reduced text size */}
-                    Model: <span className="font-normal"> {game.model}</span>
+                <h2 className="text-xl font-semibold text-gray-800">
+                    Model: <span className="font-normal">{game.model}</span>
                 </h2>
                 <button
                     onClick={toggleCollapse}
-                    className="bg-blue-500 text-white px-3 py-1 text-sm rounded hover:bg-blue-700"> {/* Smaller button */}
+                    className="px-4 py-2 bg-blue-600 text-white font-semibold rounded transition-colors duration-200 hover:bg-blue-700"
+                >
                     {isCollapsed ? "Expand" : "Collapse"}
                 </button>
             </div>
 
             {/* Collapsible content */}
             {!isCollapsed && (
-                <div className="mt-3"> {/* Reduced margin-top */}
+                <div className="mt-4 space-y-4">
                     {/* First Board */}
-                    <div className="mb-4"> {/* Reduced spacing */}
-                        <h3 className="text-lg font-bold mb-2">First Board</h3>
+                    <div>
+                        <h3 className="text-xl font-bold text-gray-800 mb-2">First Board</h3>
                         {game.firstBoard?.categories.map((cat, idx) => (
                             <CollapsibleCategory
                                 key={idx}
@@ -42,8 +43,8 @@ const ProfileGameCard = ({ game }: ProfileGameCardProps) => {
                     </div>
 
                     {/* Second Board */}
-                    <div className="mb-4">
-                        <h3 className="text-lg font-bold mb-2">Second Board</h3>
+                    <div>
+                        <h3 className="text-xl font-bold text-gray-800 mb-2">Second Board</h3>
                         {game.secondBoard?.categories.map((cat, idx) => (
                             <CollapsibleCategory
                                 key={idx}
@@ -55,13 +56,13 @@ const ProfileGameCard = ({ game }: ProfileGameCardProps) => {
 
                     {/* Final Jeopardy */}
                     <div>
-                        <h3 className="text-lg font-bold mb-2">Final Jeopardy</h3>
+                        <h3 className="text-xl font-bold text-gray-800 mb-2">Final Jeopardy</h3>
                         {game.finalJeopardy?.categories.map((cat, idx) => (
                             <CollapsibleCategory
                                 key={idx}
                                 category={cat.category}
                                 values={cat.values.map((value) => ({
-                                    value: 0,
+                                    value: 0, // Final Jeopardy doesn't have a monetary value
                                     question: value.question,
                                     answer: value.answer,
                                 }))}

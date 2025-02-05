@@ -1,4 +1,5 @@
-import React, {ReactNode} from "react";
+import React, { ReactNode } from "react";
+import { motion, AnimatePresence } from "framer-motion";
 
 interface AlertButton {
     label: string; // The text to display on the button
@@ -19,30 +20,44 @@ const Alert: React.FC<AlertProps> = ({
                                          buttons,
                                          closeAlert,
                                      }) => {
-    if (!isOpen) return null;
-
     return (
-        <div className="fixed inset-0 z-50 bg-black bg-opacity-50 flex items-center justify-center">
-            <div className="bg-blue-100 rounded shadow-lg p-6 max-w-sm w-full">
-                <p className="text-lg mb-4 text-black">{text}</p>
-                <div className="flex justify-end space-x-3">
-                    {buttons.map((button, index) => (
-                        <button
-                            key={index}
-                            className={`px-4 py-2 rounded ${
-                                button.styleClass || "bg-blue-500 text-white hover:bg-blue-600"
-                            }`}
-                            onClick={() => {
-                                button.onClick(); // Trigger button action
-                                closeAlert(); // Close the alert
-                            }}
-                        >
-                            {button.label}
-                        </button>
-                    ))}
-                </div>
-            </div>
-        </div>
+        <AnimatePresence>
+            {isOpen && (
+                <motion.div
+                    className="fixed inset-0 z-50 bg-black bg-opacity-50 flex items-center justify-center"
+                    initial={{ opacity: 0 }}
+                    animate={{ opacity: 1 }}
+                    exit={{ opacity: 0 }}
+                >
+                    <motion.div
+                        className="bg-white rounded-xl shadow-2xl p-8 max-w-md w-full"
+                        initial={{ scale: 0.9, opacity: 0 }}
+                        animate={{ scale: 1, opacity: 1 }}
+                        exit={{ scale: 0.9, opacity: 0 }}
+                        transition={{ duration: 0.3 }}
+                    >
+                        <p className="text-lg mb-6 text-gray-800">{text}</p>
+                        <div className="flex justify-end space-x-3">
+                            {buttons.map((button, index) => (
+                                <button
+                                    key={index}
+                                    className={`px-5 py-2 rounded-md focus:outline-none transition ${
+                                        button.styleClass ||
+                                        "bg-blue-600 text-white hover:bg-blue-700"
+                                    }`}
+                                    onClick={() => {
+                                        button.onClick(); // Trigger button action
+                                        closeAlert(); // Close the alert
+                                    }}
+                                >
+                                    {button.label}
+                                </button>
+                            ))}
+                        </div>
+                    </motion.div>
+                </motion.div>
+            )}
+        </AnimatePresence>
     );
 };
 

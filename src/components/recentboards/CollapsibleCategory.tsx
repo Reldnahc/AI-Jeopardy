@@ -1,6 +1,6 @@
-import QuestionItem from "./QuestionItem.tsx";
 import { useState } from "react";
-import { BoardValue } from "../../types/Board.ts"; // Adjust the import path based on where BoardValue is defined
+import QuestionItem from "./QuestionItem.tsx";
+import { BoardValue } from "../../types/Board.ts"; // Adjust the import path as needed
 
 type CollapsibleCategoryProps = {
     category: string; // The name of the category
@@ -11,31 +11,28 @@ const CollapsibleCategory = ({ category, values }: CollapsibleCategoryProps) => 
     const [open, setOpen] = useState(false); // Collapsed by default
 
     return (
-        <div className="mb-2"> {/* Reduced margin */}
-            {/* Button with hover effect */}
+        <div className="mb-2">
+            {/* Toggle button */}
             <button
                 onClick={() => setOpen(!open)}
-                className={`w-full text-left font-bold text-lg focus:outline-none flex justify-between items-center 
-                ${open ? "text-blue-700" : "text-gray-900"} 
-                hover:bg-gray-200 hover:rounded-lg py-1 px-2 transition-all duration-300`}
+                className={`w-full text-left font-bold text-lg focus:outline-none flex justify-between items-center
+          ${open ? "text-blue-700" : "text-gray-900"}
+          hover:bg-gray-200 hover:rounded-lg py-1 px-2 transition-all duration-300`}
             >
                 <span>{category}</span>
-                {/* Rotate icon on open/close */}
                 <span
                     className={`ml-2 text-xl transform transition-transform duration-300 ${
                         open ? "rotate-180" : "rotate-0"
                     }`}
                 >
-                    {open ? "▲" : "▼"}
-                </span>
+          {open ? "▲" : "▼"}
+        </span>
             </button>
 
-            {/* Conditionally rendered area with animation */}
+            {/* Collapsible content */}
             <div
                 className={`ml-3 overflow-hidden transition-all duration-500 ease-out ${open ? "max-h-[1000px]" : "max-h-0"}`}
-                style={{
-                    opacity: open ? 1 : 0, // Smooth fade-in/out for content
-                }}
+                style={{ opacity: open ? 1 : 0 }}
             >
                 {values.map((val, idx) => (
                     <QuestionItem

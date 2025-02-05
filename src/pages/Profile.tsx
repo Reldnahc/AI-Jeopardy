@@ -6,6 +6,7 @@ import ProfileGameCard from "../components/profile/ProfileGameCard.tsx";
 import Avatar from "../components/common/Avatar.tsx";
 import {useAuth} from "../contexts/AuthContext.tsx";
 import {useUserProfile} from "../contexts/UserProfileContext.tsx"; // Import the `Board` type
+import { motion } from 'framer-motion';
 
 // Define the expected shape of the profile data from Supabase
 interface ProfileData {
@@ -138,7 +139,7 @@ const Profile: React.FC = () => {
 
     if (loading) {
         return (
-            <div className="flex items-center justify-center h-screen">
+            <div className="flex items-center justify-center h-screen bg-gradient-to-br from-indigo-500 to-blue-600">
                 <p className="text-xl">Loading...</p>
             </div>
         );
@@ -155,92 +156,132 @@ const Profile: React.FC = () => {
     }
 
     return (
-        <div className="max-w-3xl mx-auto p-4">
-            <div className="bg-[#AAA] shadow rounded p-6">
-                {/* Profile Header */}
-                <div className="flex items-center space-x-4">
-                    <div className="flex w-16">
-                        <Avatar name={username || 'A'} size="16" color={selectedColor} textColor={selectedTextColor}/>
-                    </div>
-                    <div>
-                        <h1 className="text-2xl text-blue-500 font-bold">{profile.displayname}</h1>
-                            {profile.role === 'admin' && (
-                                <h3 className="text-sm ml-1 -mt-1 text-red-600">{profile.role.charAt(0).toUpperCase() + profile.role.slice(1).toLowerCase()}</h3>
+        <div className="min-h-screen bg-gradient-to-br from-indigo-500 to-blue-600 flex items-center justify-center p-6">
+            <motion.div
+                initial={{ opacity: 0, y: 20 }}
+                animate={{ opacity: 1, y: 0 }}
+                transition={{ duration: 0.6 }}
+                className="max-w-3xl w-full bg-white rounded-xl shadow-2xl overflow-hidden p-6"
+            >
+                <div className="space-y-8">
+                    {/* Profile Header */}
+                    <div className="flex items-center space-x-4">
+                        <div className="w-16 h-16 flex-shrink-0">
+                            <Avatar
+                                name={username || "A"}
+                                size="16"
+                                color={selectedColor}
+                                textColor={selectedTextColor}
+                            />
+                        </div>
+                        <div>
+                            <h1 className="text-2xl font-bold text-blue-500">
+                                {profile.displayname}
+                            </h1>
+                            {profile.role === "admin" && (
+                                <h3 className="text-sm mt-1 text-red-600">
+                                    {profile.role.charAt(0).toUpperCase() +
+                                        profile.role.slice(1).toLowerCase()}
+                                </h3>
                             )}
-                        {profile.bio && <p className="text-gray-600">{profile.bio}</p>}
+                            {profile.bio && (
+                                <p className="mt-1 text-gray-600">{profile.bio}</p>
+                            )}
+                        </div>
                     </div>
-                </div>
-                {/* Player Settings */}
 
-                {user?.id === profile.id && (
-                    <div className="mt-6">
-                        <h2 className="text-2xl font-semibold mb-4">User Settings</h2>
-                        <div className="ml-2">
-                            <h3 className="text-xl font-semibold mb-4">Background Color</h3>
-                            <div className="flex flex-wrap gap-2">
-                                {colors.map((color) => (
-                                    <div
-                                        key={color}
-                                        className={`w-8 h-8 rounded-full cursor-pointer ${color} ${
-                                            selectedColor === color ? "ring-4 ring-blue-400" : ""
-                                        }`} // Highlight the selected color
-                                        onClick={() => saveSelectedColor(color, 'color')} // Set the selected color on click
-                                    ></div>
-                                ))}
+                    {/* Player Settings */}
+                    {user?.id === profile.id && (
+                        <div>
+                            <h2 className="text-2xl font-semibold mb-4 text-gray-800">User Settings</h2>
+                            <div className="space-y-6">
+                                {/* Background Color */}
+                                <div>
+                                    <h3 className="text-xl font-semibold mb-2 text-gray-800">Background Color</h3>
+                                    <div className="flex flex-wrap gap-2">
+                                        {colors.map((color) => (
+                                            <div
+                                                key={color}
+                                                className={`w-8 h-8 rounded-full cursor-pointer ${color} ${
+                                                    selectedColor === color
+                                                        ? "ring-4 ring-blue-400"
+                                                        : ""
+                                                }`}
+                                                onClick={() => saveSelectedColor(color, "color")}
+                                            ></div>
+                                        ))}
+                                    </div>
+                                </div>
+
+                                {/* Icon Color */}
+                                <div>
+                                    <h3 className="text-xl font-semibold mb-2 text-gray-800">Icon Color</h3>
+                                    <div className="flex flex-wrap gap-2">
+                                        {textColors.map((color) => (
+                                            <div
+                                                key={color}
+                                                className={`w-8 h-8 rounded-full cursor-pointer ${color.replace(
+                                                    "text",
+                                                    "bg"
+                                                )} ${
+                                                    selectedTextColor === color
+                                                        ? "ring-4 ring-blue-400"
+                                                        : ""
+                                                }`}
+                                                onClick={() => saveSelectedColor(color, "text_color")}
+                                            ></div>
+                                        ))}
+                                    </div>
+                                </div>
                             </div>
                         </div>
-                        <div className="ml-2">
-                            <h3 className="text-xl font-semibold mb-4">Icon Color</h3>
-                            <div className="flex flex-wrap gap-2">
-                                {textColors.map((color) => (
-                                    <div
-                                        key={color}
-                                        className={`w-8 h-8 rounded-full cursor-pointer ${color.replace('text','bg')} ${
-                                            selectedTextColor === color ? "ring-4 ring-blue-400" : ""
-                                        }`} // Highlight the selected color
-                                        onClick={() => saveSelectedColor(color, 'text_color')} // Set the selected color on click
-                                    ></div>
-                                ))}
+                    )}
+
+                    {/* Player Stats */}
+                    <div>
+                        <h2 className="text-2xl font-semibold mb-4 text-gray-800">Player Stats</h2>
+                        <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                            <div className="bg-gray-100 p-4 rounded-lg shadow">
+                                <p className="text-gray-800">Boards Generated</p>
+                                <p className="text-lg font-semibold text-gray-900">
+                                    {profile.boards_generated ?? "Coming soon!"}
+                                </p>
+                            </div>
+                            <div className="bg-gray-100 p-4 rounded-lg shadow">
+                                <p className="text-gray-800">Games Finished</p>
+                                <p className="text-lg font-semibold text-gray-900">
+                                    {profile.games_finished ?? "Coming soon!"}
+                                </p>
+                            </div>
+                            <div className="bg-gray-100 p-4 rounded-lg shadow">
+                                <p className="text-gray-800">Games Won</p>
+                                <p className="text-lg font-semibold text-gray-900">
+                                    {profile.games_won ?? "Coming soon!"}
+                                </p>
                             </div>
                         </div>
                     </div>
 
-                )}
-                {/* Player Stats */}
-                <div className="mt-6">
-                    <h2 className="text-2xl font-semibold mb-4">Player Stats</h2>
-                    <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                        <div className="bg-gray-300 p-4 rounded">
-                            <p className="text-gray-900">Boards Generated</p>
-                            <p className="text-lg text-gray-900 font-semibold">{profile.boards_generated ?? "Coming soon!"}</p>
-                        </div>
-                        <div className="bg-gray-300 p-4 rounded">
-                            <p className="text-gray-900">Games Finished</p>
-                            <p className="text-lg text-gray-900 font-semibold">{profile.games_finished ?? "Coming soon!"}</p>
-                        </div>
-                        <div className="bg-gray-300 p-4 rounded">
-                            <p className="text-gray-900">Games Won</p>
-                            <p className="text-lg text-gray-900 font-semibold">{profile.games_won ?? "Coming soon!"}</p>
+                    {/* Recently Generated Boards */}
+                    <div>
+                        <h2 className="text-2xl font-semibold mb-4 text-gray-800">
+                            Recently Generated Boards
+                        </h2>
+                        <div className="space-y-4">
+                            {boards.length > 0 ? (
+                                boards.map((board, idx) => (
+                                    <ProfileGameCard key={idx} game={board} />
+                                ))
+                            ) : (
+                                <p className="text-gray-600 italic">No boards generated yet.</p>
+                            )}
                         </div>
                     </div>
                 </div>
-
-                {/* Recently Generated Boards */}
-                <div className="mt-6">
-                    <h2 className="text-2xl font-semibold mb-4">Recently Generated Boards</h2>
-                    <div className="grid grid-cols-1 gap-0">
-                        {boards.length > 0 ? (
-                            boards.map((board, idx) => (
-                                <ProfileGameCard key={idx} game={board} />
-                            ))
-                        ) : (
-                            <p className="text-gray-600 italic">No boards generated yet.</p>
-                        )}
-                    </div>
-                </div>
-            </div>
+            </motion.div>
         </div>
     );
+
 };
 
 export default Profile;

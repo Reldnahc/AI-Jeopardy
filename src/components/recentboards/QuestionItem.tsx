@@ -11,29 +11,29 @@ const QuestionItem = ({ value, question, answer }: QuestionItemProps) => {
 
     return (
         <div className="mb-2">
-            {/* Button with hover effect */}
+            {/* Toggle answer visibility */}
             <button
                 onClick={() => setShowAnswer(!showAnswer)}
                 className="w-full text-left font-medium text-base text-gray-800 flex justify-between items-center focus:outline-none hover:text-blue-700 transition-colors duration-200"
             >
-                <span>
-                    ${value}: {question}
-                </span>
+        <span>
+          ${value}: {question}
+        </span>
                 <span
                     className={`ml-2 text-2xl transition-transform duration-300 ${
                         showAnswer ? "rotate-180 text-blue-700" : "text-gray-900"
                     }`}
                 >
-                    {showAnswer ? "-" : "+"}
-                </span>
+          {showAnswer ? "-" : "+"}
+        </span>
             </button>
 
-            {/* Answer section with subtle transition */}
+            {/* Answer section */}
             <div
-                className="mt-1 ml-2 transition-opacity duration-300 text-md text-amber-300"
+                className="mt-1 ml-2 transition-opacity duration-300 text-md text-gray-700"
                 style={{ opacity: showAnswer ? 1 : 0 }}
             >
-                -{answer}
+                - {answer}
             </div>
         </div>
     );

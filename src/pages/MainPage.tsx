@@ -5,7 +5,7 @@ import randomCategoryList from "../data/randomCategories.ts";
 import {useAuth} from "../contexts/AuthContext.tsx";
 import {useProfile} from "../contexts/ProfileContext.tsx";
 import {useAlert} from "../contexts/AlertContext.tsx";
-
+import { motion } from 'framer-motion'; // Optional: used for smooth entrance animations
 export default function MainPage() {
     const [gameId, setGameId] = useState('');
     const [cotd, setCotd] = useState({
@@ -196,104 +196,132 @@ export default function MainPage() {
     };
 
     return (
-        <div className="p-8">
-            {/* Outer container to center content */}
-            <div className="flex justify-center">
-                {/* Main container: stacks vertically on mobile and horizontally on md+ with increased max width */}
-                <div className="flex flex-col md:flex-row w-full max-w-screen-2xl">
-                    {/* Left Column: Main Functionality */}
-                    <div className="flex-1">
-                        <div className="p-8 font-sans">
-                            <h1 className="text-3xl md:text-4xl font-bold mb-4 text-center">
-                                Artificially {randomAdjective} Jeopardy
-                            </h1>
-                            <h2 className="text-xl md:text-2xl mb-10 text-center">
-                                Try to answer with the correct question.
-                            </h2>
+        <div className="min-h-screen bg-gradient-to-br from-indigo-500 to-blue-600 flex items-center justify-center p-6">
+            {/* Animated container for the main card */}
+            <motion.div
+                initial={{ opacity: 0, y: 20 }}
+                animate={{ opacity: 1, y: 0 }}
+                transition={{ duration: 0.6 }}
+                className="bg-white rounded-xl shadow-2xl overflow-hidden w-full max-w-6xl"
+            >
+                <div className="grid grid-cols-1 md:grid-cols-3">
+                    {/* Main Content (spans two columns on medium+ screens) */}
+                    <div className="col-span-2 p-10">
+                        <h1 className="text-5xl font-extrabold text-gray-900 text-center">
+                            Artificially {randomAdjective} Jeopardy
+                        </h1>
+                        <p className="text-xl text-gray-700 text-center mt-4">
+                            Try to answer with the correct question.
+                        </p>
 
-                            {/* Category of the Day Box */}
-                            <div className="w-full mb-6 bg-[#AAA] p-6 border border-[#ddd] rounded-lg shadow-md">
-                                <h3 className="text-xl mb-4 text-center">
+                        {/* Featured Category Card */}
+                        <div className="mt-8">
+                            <div className="p-6 bg-gray-50 rounded-lg border border-gray-200 shadow-sm">
+                                <h3 className="text-2xl font-semibold text-gray-800 text-center mb-2">
                                     Featured Category
                                 </h3>
-                                <p className="text-lg text-center">
-                                    <strong>{cotd.category}</strong>
+                                <p className="text-xl font-bold text-gray-900 text-center">
+                                    {cotd.category}
                                 </p>
-                                <p className="text-lg text-center">
+                                <p className="text-lg text-gray-600 text-center">
                                     {cotd.description}
                                 </p>
                             </div>
+                        </div>
 
-                            {/* Container for the Create and Join boxes */}
-                            <div className="flex flex-col md:flex-row gap-6">
-                                {/* Create Game Box */}
+                        {/* Create & Join Game Section */}
+                        <div className="mt-8 grid grid-cols-1 md:grid-cols-2 gap-6">
+                            {/* Create Game Box */}
+                            <div className="flex flex-col justify-center items-center bg-gradient-to-br from-green-400 to-green-500 p-6 rounded-lg shadow hover:shadow-lg transition">
+                                <button
+                                    onClick={handleCreateGame}
+                                    className="w-full py-3 px-6 text-white text-xl font-semibold focus:outline-none"
+                                >
+                                    Create Game
+                                </button>
+                            </div>
 
-
-                                        <button
-                                            onClick={handleCreateGame}
-                                            className="text-lg py-3 px-6 bg-blue-500 text-white border-0 rounded cursor-pointer w-3/5 shadow-md"
-                                        >
-                                            Create Game
-                                        </button>
-
-
-                                {/* Join Game Box */}
-                                <div className="flex flex-col w-full md:flex-1 bg-[#AAA] p-6 border border-[#ddd] rounded-lg shadow-md">
-                                    <h3 className="text-xl mb-4 text-center md:text-left">
-                                        Join a Game
-                                    </h3>
-                                    <div className="flex flex-col gap-4">
-                                        <div className="flex flex-col gap-2">
-                                        </div>
-                                        <div className="flex flex-col gap-2">
-                                            <label htmlFor="gameId" className="text-lg font-bold">
-                                                Game ID:
-                                            </label>
-                                            <input
-                                                id="gameId"
-                                                type="text"
-                                                value={gameId}
-                                                onChange={(e) => setGameId(e.target.value)}
-                                                placeholder="Enter game ID to join"
-                                                className="text-lg p-3 rounded border border-gray-300"
-                                            />
-                                        </div>
-                                        <button
-                                            onClick={handleJoinGame}
-                                            className="text-lg py-3 px-6 bg-green-500 text-white border-0 rounded cursor-pointer"
-                                        >
-                                            Join Game
-                                        </button>
+                            {/* Join Game Box */}
+                            <div className="bg-gray-50 p-6 rounded-lg border border-gray-200 shadow">
+                                <h3 className="text-2xl font-semibold text-gray-800 text-center mb-4">
+                                    Join a Game
+                                </h3>
+                                <div className="flex flex-col gap-4">
+                                    <div className="flex flex-col">
+                                        <label htmlFor="gameId" className="text-lg font-medium text-gray-800">
+                                            Game ID:
+                                        </label>
+                                        <input
+                                            id="gameId"
+                                            type="text"
+                                            value={gameId}
+                                            onChange={(e) => setGameId(e.target.value)}
+                                            placeholder="Enter game ID to join"
+                                            className="mt-2 p-3 border border-gray-300 rounded focus:outline-none focus:ring-2 focus:ring-blue-500"
+                                        />
                                     </div>
+                                    <button
+                                        onClick={handleJoinGame}
+                                        className="py-3 px-6 bg-blue-600 hover:bg-blue-700 text-white font-semibold rounded transition-colors duration-200"
+                                    >
+                                        Join Game
+                                    </button>
                                 </div>
                             </div>
+                        </div>
 
-                            {/* How to Play Section */}
-                            <div className="w-full mt-8 bg-[#AAA] p-6 border border-[#ddd] rounded-lg shadow-md">
-                                <h3 className="text-xl mb-4 text-center">
+                        {/* How to Play Section */}
+                        <div className="mt-8">
+                            <details className="bg-gray-50 p-6 rounded-lg border border-gray-200 shadow" open>
+                                <summary className="text-2xl font-semibold text-gray-800 cursor-pointer">
                                     How to Play
-                                </h3>
-                                <p className="text-lg">
-                                    Welcome to our Jeopardy-style game! Follow these steps to get started:
+                                </summary>
+                                <p className="mt-4 text-lg text-gray-700">
+                                    Welcome to AI Jeopardy! This is currently a work in progress so please be patient.
                                 </p>
-                                <ul className="list-disc pl-6 mt-3 text-lg">
-                                    <li>Enter your name in the provided field.</li>
-                                    <li>Create a new game or join an existing game by entering its ID.</li>
-                                    <li>Once in the game, answer the questions by phrasing your responses as questions.</li>
+                                <ul className="list-disc ml-6 mt-4 text-lg text-gray-700">
+                                    <li> To create a game you will first need to make an account in the top right.</li>
+                                    <li> You don't need an account to join a game as a guest. Just insert the code your friend gave you above.</li>
+                                    <li> consider creating an account to customize your profile, create games, and more!</li>
+                                    <li> Once your in a lobby you select categories that you want to have questions generated for.</li>
+                                    <li> If your the host press the start game button to begin! otherwise wait for the host to begin.</li>
+                                    <li> The host controls the game, once they are done reading the prompt they unlock the buzzer and the players race to buzz in if they know the answer.</li>
                                     <li>Have fun and enjoy the game!</li>
                                 </ul>
-                            </div>
+                            </details>
                         </div>
+                        {/* How to Play Section */}
+                        <div className="mt-8">
+                            <details className="bg-gray-50 p-6 rounded-lg border border-gray-200 shadow" open>
+                                <summary className="text-2xl font-semibold text-gray-800 cursor-pointer">
+                                    About Models
+                                </summary>
+                                <p className="mt-4 text-lg text-gray-700">
+
+                                    <span className="text-xl text-bold text-red-500">
+                                        The model options are currently locked as tokens are not yet implemented.
+                                        Please choose from the available free models.
+                                    </span><br/>
+                                    <span className="mb-t text-lg text-bold text-gray-700">
+                                        The host is shown a model section field, for the most part you can leave this as is.
+                                        However, if you want to change the model you can do so by clicking the dropdown and selecting a model from the list.
+                                        Because the use of some of these models is quite expensive some of them cost tokens.
+                                    </span>
+                                </p>
+                            </details>
+                        </div>
+
+
                     </div>
 
-                    {/* Right Column: Banner Ad */}
-                    <div className="mt-8 w-full md:mt-0 md:ml-6 md:w-72">
-                        <div className="bg-gray-300 p-6 text-center rounded shadow-md">
-                            Banner Ad
+                    {/* Sponsored/Banner Ad Column */}
+                    <div className="p-10 bg-gray-100 border-l border-gray-200 flex">
+                        <div className="w-full text-center">
+                            <h2 className="text-2xl font-bold text-gray-800 mb-4">Sponsored</h2>
                         </div>
                     </div>
                 </div>
-            </div>
+            </motion.div>
         </div>
     );
 }
