@@ -1,5 +1,5 @@
 import React from "react";
-import {Player} from "../types/Lobby.ts";
+import {Player} from "../../types/Lobby.ts";
 
 interface WagerInputProps {
     players: Player[];

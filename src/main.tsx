@@ -13,28 +13,31 @@ import {ProfileProvider} from "./contexts/ProfileContext.tsx";
 import RecentBoards from "./pages/RecentBoards.tsx";
 import {UserProfileProvider} from "./contexts/UserProfileContext.tsx";
 import {AlertProvider} from "./contexts/AlertContext.tsx";
+import {DeviceProvider} from "./contexts/DeviceContext.tsx";
 ReactDOM.createRoot(document.getElementById('root')!).render(
     <React.StrictMode>
         <HashRouter>
-            <AuthProvider>
-                <ProfileProvider>
-                    <UserProfileProvider>
-                        <WebSocketProvider>
-                            <AlertProvider>
-                                <Header/>
-                                <Routes>
-                                    <Route path="/" element={<MainPage />} />
-                                    <Route path="/lobby/:gameId" element={<Lobby />} />
-                                    <Route path="/game/:gameId" element={<Game />} />
-                                    <Route path="/profile/:username" element={<Profile />} />
-                                    <Route path="/recent-boards" element={<RecentBoards />} />
-                                    {/* Add other routes for Game, etc., here */}
-                                </Routes>
-                            </AlertProvider>
-                        </WebSocketProvider>
-                    </UserProfileProvider>
-                </ProfileProvider>
-            </AuthProvider>
+            <DeviceProvider>
+                <AuthProvider>
+                    <ProfileProvider>
+                        <UserProfileProvider>
+                            <WebSocketProvider>
+                                <AlertProvider>
+                                    <Header/>
+                                    <Routes>
+                                        <Route path="/" element={<MainPage />} />
+                                        <Route path="/lobby/:gameId" element={<Lobby />} />
+                                        <Route path="/game/:gameId" element={<Game />} />
+                                        <Route path="/profile/:username" element={<Profile />} />
+                                        <Route path="/recent-boards" element={<RecentBoards />} />
+                                        {/* Add other routes for Game, etc., here */}
+                                    </Routes>
+                                </AlertProvider>
+                            </WebSocketProvider>
+                        </UserProfileProvider>
+                    </ProfileProvider>
+                </AuthProvider>
+            </DeviceProvider>
         </HashRouter>
     </React.StrictMode>
 );

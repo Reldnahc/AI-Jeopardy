@@ -45,10 +45,10 @@ const HostControls: React.FC<HostControlsProps> = ({ selectedModel, onModelChang
 
             {/* Options Box */}
             <div className="flex flex-col justify-center sm:mr-5">
-                <div className="flex flex-col justify-center items-start bg-gray-800 px-20 py-5 rounded-lg border border-gray-700 shadow-md flex-shrink-0">
+                <div className="flex flex-col justify-center items-start bg-gray-50 px-20 py-5 rounded-lg border border-gray-300 shadow-md flex-shrink-0">
                     {/* Dropdown for model selection */}
                     <div className="flex flex-col gap-2">
-                        <label className="text-gray-400 text-lg">Model Selection:</label>
+                        <label className="text-gray-800 text-lg">Model Selection:</label>
                         <select
                             value={selectedModel}
                             onChange={onModelChange}

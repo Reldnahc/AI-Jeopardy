@@ -114,9 +114,6 @@ wss.on('connection', (ws) => {
             ws.gameId = data.gameId;
         }
         if (data.type === 'request-lobby-state'){
-            console.log(games);
-            console.log(data.gameId);
-            console.log(games[data.gameId]);
             ws.send(JSON.stringify({
                 type: 'lobby-state',
                 gameId: data.gameId,
@@ -196,15 +193,12 @@ wss.on('connection', (ws) => {
 
             if (msg && msg.color) color = msg.color;
             else color = "bg-blue-500";
-            if (msg && msg.text_color) color = msg.text_color;
+            if (msg && msg.text_color) text_color = msg.text_color;
             else text_color = "text-white";
 
             // Add the player
             games[gameId].players.push({ id: ws.id, name: actualName, color: color,text_color: text_color });
             console.log(`Player ${actualName} joined game ${gameId}`);
-
-            // Log the updated player list for debugging
-            console.log(`Players in game ${gameId}:`, games[gameId].players);
 
             ws.send(JSON.stringify({
                 type: 'lobby-state',
@@ -264,11 +258,15 @@ wss.on('connection', (ws) => {
 
         }
 
+        if (data.type === 'request-join-lobby') {
+
+
+        }
+
         if (data.type === 'check-lobby') {
             const {gameId} = data;
             let isValid = false;
-            console.log(games[gameId]);
-            if (games[gameId]) {
+            if (games[gameId] && games[gameId].inLobby === true) {
                 isValid = true;
             }
 
@@ -441,9 +439,6 @@ wss.on('connection', (ws) => {
                 }
             }
 
-            console.log(games[gameId].players);
-            // Log the updated player list for debugging
-            console.log(`Players in game ${gameId}:`, games[gameId].players);
             // Notify the new player of the current game state (buzz result, buzzer status, board, and selected clue if any)
             ws.send(JSON.stringify({
                 type: 'game-state',
@@ -843,7 +838,8 @@ async function createBoardData(categories, model, host) {
             case "o1-mini":
                 apiCall = callOpenAi;
                 break;
-            case "deepseek":
+            case "deepseek-reasoner":
+            case "deepseek-chat":
                 apiCall = callDeepseek;
                 break;
             case "claude-3-5-sonnet-20241022":

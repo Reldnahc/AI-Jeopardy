@@ -1,12 +1,13 @@
 import {useEffect, useState} from 'react';
 import {useLocation, useParams} from 'react-router-dom';
-import JeopardyBoard from '../components/JeopardyBoard';
+import JeopardyBoard from '../components/game/JeopardyBoard.tsx';
 import {Category, Clue} from "../types.ts";
-import Sidebar from "../components/Sidebar.tsx";
+import Sidebar from "../components/game/Sidebar.tsx";
 import {DrawingPath} from "../utils/drawingUtils.tsx";
-import FinalScoreScreen from "../components/FinalScoreScreen.tsx";
+import FinalScoreScreen from "../components/game/FinalScoreScreen.tsx";
 import {useWebSocket} from "../contexts/WebSocketContext.tsx";
 import {Player} from "../types/Lobby.ts";
+import {useDeviceContext} from "../contexts/DeviceContext.tsx";
 
 export default function Game() {
     const {gameId} = useParams<{ gameId: string }>();
@@ -38,6 +39,7 @@ export default function Game() {
 
     // Persistent WebSocket connection
     const { socket, isSocketReady } = useWebSocket();
+    const { deviceType } = useDeviceContext();
 
     useEffect(() => {
         document.title = 'Jeopardy! - ' + gameId;
@@ -317,33 +319,36 @@ export default function Game() {
 
     return (
         <div
-            className="flex h-[calc(100vh-5.5rem)] w-screen overflow-hidden font-sans bg-gradient-to-br from-[#2e3a59] to-[#1c2538]"
+            className="flex h-[calc(100vh-5.5rem)] w-screen overflow-hidden font-sans bg-gradient-to-r from-indigo-400 to-blue-700"
         >
             {/* Sidebar */}
-            <Sidebar
-                gameId={gameId}
-                isHost={isHost}
-                host={host}
-                players={players}
-                scores={scores}
-                buzzResult={buzzResult}
-                isBuzzed={isBuzzed}
-                buzzLockedOut={buzzLockedOut}
-                copySuccess={copySuccess}
-                buzzerLocked={buzzerLocked}
-                lastQuestionValue={lastQuestionValue}
-                selectedClue={selectedClue}
-                activeBoard={activeBoard}
-                isFinalJeopardy={isFinalJeopardy}
-                setCopySuccess={setCopySuccess}
-                setBuzzerLocked={setBuzzerLocked}
-                setIsBuzzed={setIsBuzzed}
-                setBuzzResult={setBuzzResult}
-                handleScoreUpdate={handleScoreUpdate}
-                markAllCluesComplete={markAllCluesComplete}
-                handleBuzz={handleBuzz}
-            />
-
+            {deviceType === 'mobile' ? (
+                <div></div>
+            ) : (
+                <Sidebar
+                    gameId={gameId}
+                    isHost={isHost}
+                    host={host}
+                    players={players}
+                    scores={scores}
+                    buzzResult={buzzResult}
+                    isBuzzed={isBuzzed}
+                    buzzLockedOut={buzzLockedOut}
+                    copySuccess={copySuccess}
+                    buzzerLocked={buzzerLocked}
+                    lastQuestionValue={lastQuestionValue}
+                    selectedClue={selectedClue}
+                    activeBoard={activeBoard}
+                    isFinalJeopardy={isFinalJeopardy}
+                    setCopySuccess={setCopySuccess}
+                    setBuzzerLocked={setBuzzerLocked}
+                    setIsBuzzed={setIsBuzzed}
+                    setBuzzResult={setBuzzResult}
+                    handleScoreUpdate={handleScoreUpdate}
+                    markAllCluesComplete={markAllCluesComplete}
+                    handleBuzz={handleBuzz}
+                />
+                )}
             {/* Jeopardy Board Section */}
             <div
                 className="flex flex-1 justify-center items-center overflow-hidden p-0"

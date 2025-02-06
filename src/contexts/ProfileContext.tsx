@@ -75,7 +75,7 @@ export const ProfileProvider: React.FC<{ children: ReactNode }> = ({ children })
         if (loading === false){
             fetchProfile();
         }
-    }, [loading]);
+    }, [user, loading]);
 
     // Provide the context value
     return (

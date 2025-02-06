@@ -79,10 +79,7 @@ export const WebSocketProvider: React.FC<{ children: React.ReactNode }> = ({ chi
 
     // Retry sending the join message when profile or loading state changes
     useEffect(() => {
-        console.log("profile");
-        console.log(profile);
         if (profile && isSocketReady && !hasSentJoinMessage) {
-            console.log("Sending join message...");
             sendJoinMessage(); // Trigger join message when profile becomes available
             setHasSentJoinMessage(true);
         }

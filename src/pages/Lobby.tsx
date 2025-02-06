@@ -2,13 +2,15 @@ import React, { useEffect, useState } from 'react';
 import randomCategoryList from '../data/randomCategories';
 import { useLocation, useNavigate, useParams } from "react-router-dom";
 import { useWebSocket } from "../contexts/WebSocketContext.tsx";
-import LobbySidebar from "../components/LobbySidebar.tsx";
+import LobbySidebar from "../components/lobby/LobbySidebar.tsx";
 import LoadingScreen from "../components/common/LoadingScreen.tsx";
 import HostControls from "../components/lobby/HostControls.tsx";
 import FinalJeopardyCategory from "../components/lobby/FinalJeopardyCategory.tsx";
 import CategoryBoard from "../components/lobby/CategoryBoard.tsx";
 import {Player} from "../types/Lobby.ts";
 import {useProfile} from "../contexts/ProfileContext.tsx";
+import {useAlert} from "../contexts/AlertContext.tsx";
+import { motion } from 'framer-motion';
 
 type LockedCategories = {
     firstBoard: boolean[]; // Jeopardy lock states
@@ -39,7 +41,6 @@ const Lobby: React.FC = () => {
     const [players, setPlayers] = useState<Player[]>(location.state?.players || []);
     const [host, setHost] = useState<string | null>(null);
     const [selectedModel, setSelectedModel] = useState('gpt-4o-mini'); // Default value for dropdown
-    const [sidebarOpen, setSidebarOpen] = useState(false); // Manage sidebar open/close
     const [lockedCategories, setLockedCategories] = useState<LockedCategories>({
         firstBoard: Array(5).fill(false), // Default unlocked
         secondBoard: Array(5).fill(false), // Default unlocked
@@ -49,6 +50,8 @@ const Lobby: React.FC = () => {
     const { socket, isSocketReady } = useWebSocket();
     const navigate = useNavigate();
     const { profile } = useProfile();
+    const { showAlert } = useAlert();
+
 
     useEffect(() => {
         if (socket && isSocketReady) {
@@ -141,6 +144,7 @@ const Lobby: React.FC = () => {
                     gameId,
                 })
             );
+
             setIsLoading(true);
         }
     }, [isSocketReady, gameId]);
@@ -315,14 +319,34 @@ const Lobby: React.FC = () => {
 
     const handleCreateGame = async () => {
         if (!profile) {
-            alert('You need to be logged in to create a game.');
+            showAlert(
+                <span>
+                    <span className="text-red-500 font-bold text-xl">You need to be logged in to do this.</span><br/>
+                </span>,
+                [
+                    {
+                        label: "Okay",
+                        actionValue: "okay",
+                        styleClass: "bg-green-500 text-white hover:bg-green-600",
+                    }]
+            );
             return;
         }
         if (
             categories.firstBoard.some((c) => !c.trim()) ||
             categories.secondBoard.some((c) => !c.trim())
         ) {
-            alert('Please fill in all categories for both boards.');
+            showAlert(
+                <span>
+                    <span className="text-red-500 font-bold text-xl">Please fill in all the categories</span><br/>
+                </span>,
+                [
+                    {
+                        label: "Okay",
+                        actionValue: "okay",
+                        styleClass: "bg-green-500 text-white hover:bg-green-600",
+                    }]
+            );
             return;
         }
 
@@ -351,114 +375,89 @@ const Lobby: React.FC = () => {
         }
     };
 
-    // Toggle sidebar state
-    const toggleSidebar = () => {
-        setSidebarOpen((prev) => !prev);
-    };
-
     return isLoading ? (
         <LoadingScreen message={loadingMessage} loadingDots={loadingDots} />
     ) : (
-        <div className="flex flex-col md:flex-row h-[calc(100vh-5.5rem)] w-screen overflow-hidden bg-[#2e3a59] ">
-            {/* Sidebar Container */}
-            <div
-                className={`
-          fixed top-0 left-0 z-40 w-64 h-full  transform transition-transform duration-300 ease-in-out 
-          ${sidebarOpen ? 'translate-x-0' : '-translate-x-full'} 
-          md:static md:translate-x-0
-        `}
+        <div className="min-h-[calc(100vh-5.5rem)] bg-gradient-to-r from-indigo-400 to-blue-700 p-6">
+            <motion.div
+                initial={{ opacity: 0, y: 20 }}
+                animate={{ opacity: 1, y: 0 }}
+                transition={{ duration: 0.6 }}
+                className="bg-white rounded-xl shadow-2xl overflow-hidden w-full max-w-6xl mx-auto"
             >
-                <LobbySidebar
-                    gameId={gameId}
-                    isHost={isHost}
-                    host={host}
-                    players={players}
-                    copySuccess={copySuccess}
-                    setCopySuccess={setCopySuccess}
-                />
-            </div>
-
-            {/* Backdrop overlay (only on mobile when sidebar is open) */}
-            {sidebarOpen && (
-                <div
-                    className="fixed inset-0 z-30 bg-black opacity-50 md:hidden"
-                    onClick={toggleSidebar}
-                ></div>
-            )}
-
-            {/* Main Content */}
-            <div className="flex flex-col flex-1  p-5 relative overflow-y-auto">
-                {/* Mobile Toggle Button */}
-                <button
-                    onClick={toggleSidebar}
-                    className="absolute top-0 -left-2 md:hidden -rotate-90 p-2 bg-gray-700 text-white rounded focus:outline-none max-w-20"
-                >
-                    <svg
-                        xmlns="http://www.w3.org/2000/svg"
-                        className="h-4 w-4 ml-2"
-                        fill="none"
-                        viewBox="0 0 24 24"
-                        stroke="currentColor"
-                    >
-                        <path
-                            strokeLinecap="round"
-                            strokeLinejoin="round"
-                            strokeWidth={2}
-                            d="M19 9l-7 7-7-7"
-                        />
-                    </svg>
-                </button>
-
-                {/* Wrap board in a flex-grow container */}
-                <div className="flex flex-wrap gap-2 justify-around w-full">
-                    {/* First Board */}
-                    <CategoryBoard
-                        title="Jeopardy!"
-                        categories={categories.firstBoard}
-                        isHost={isHost}
-                        lockedCategories={lockedCategories.firstBoard}
-                        boardType="firstBoard"
-                        onChangeCategory={onChangeCategory}
-                        onRandomizeCategory={handleRandomizeCategory}
-                        onToggleLock={onToggleLock}
-                    />
-                    {/* Second Board */}
-                    <CategoryBoard
-                        title="Double Jeopardy!"
-                        categories={categories.secondBoard}
-                        isHost={isHost}
-                        lockedCategories={lockedCategories.secondBoard}
-                        boardType="secondBoard"
-                        onChangeCategory={onChangeCategory}
-                        onRandomizeCategory={handleRandomizeCategory}
-                        onToggleLock={onToggleLock}
-                    />
-                </div>
-
-                {/* Final Jeopardy Section */}
-                <div className="mt-4" >
-                    <FinalJeopardyCategory
-                        category={categories.finalJeopardy}
-                        isHost={isHost}
-                        onChangeCategory={onChangeCategory}
-                        onRandomizeCategory={handleRandomizeCategory} // Only needs board type
-                        lockedCategories={lockedCategories.finalJeopardy}
-                        onToggleLock={onToggleLock}
-                    />
-                </div>
-
-
-                {/* Host Controls always visible at the bottom */}
-                {isHost && (
-                    <div className="mt-4">
-                        <HostControls
-                            selectedModel={selectedModel}
-                            onModelChange={handleDropdownChange}
-                            onCreateGame={handleCreateGame}
+                <div className="grid grid-cols-1 lg:grid-cols-4">
+                    {/* Sidebar Column */}
+                    <div className="lg:col-span-1 border-r border-gray-200 bg-gray-50 p-6">
+                        <LobbySidebar
+                            gameId={gameId}
+                            isHost={isHost}
+                            host={host}
+                            players={players}
+                            copySuccess={copySuccess}
+                            setCopySuccess={setCopySuccess}
                         />
                     </div>
-                )}
-            </div>
+
+                    {/* Main Content Column */}
+                    <div className="lg:col-span-3 p-8">
+                        {/* Category Boards */}
+                        <div className="space-y-8">
+                            <div className="grid grid-cols-1 md:grid-cols-2 gap-6 ">
+                                <div className="min-w-0">
+
+                                <CategoryBoard
+                                    title="Jeopardy!"
+                                    categories={categories.firstBoard}
+                                    isHost={isHost}
+                                    lockedCategories={lockedCategories.firstBoard}
+                                    boardType="firstBoard"
+                                    onChangeCategory={onChangeCategory}
+                                    onRandomizeCategory={handleRandomizeCategory}
+                                    onToggleLock={onToggleLock}
+                                />
+                                </div>
+                                    <div className="min-w-0">
+
+                                    <CategoryBoard
+                                    title="Double Jeopardy!"
+                                    categories={categories.secondBoard}
+                                    isHost={isHost}
+                                    lockedCategories={lockedCategories.secondBoard}
+                                    boardType="secondBoard"
+                                    onChangeCategory={onChangeCategory}
+                                    onRandomizeCategory={handleRandomizeCategory}
+                                    onToggleLock={onToggleLock}
+                                />
+                                    </div>
+                            </div>
+
+                            <FinalJeopardyCategory
+                                category={categories.finalJeopardy}
+                                isHost={isHost}
+                                onChangeCategory={onChangeCategory}
+                                onRandomizeCategory={handleRandomizeCategory}
+                                lockedCategories={lockedCategories.finalJeopardy}
+                                onToggleLock={onToggleLock}
+                            />
+                        </div>
+
+                        {/* Host Controls */}
+                        {isHost && (
+                            <motion.div
+                                initial={{ opacity: 0 }}
+                                animate={{ opacity: 1 }}
+                                className="mt-8 border-t border-gray-200 pt-6"
+                            >
+                                <HostControls
+                                    selectedModel={selectedModel}
+                                    onModelChange={handleDropdownChange}
+                                    onCreateGame={handleCreateGame}
+                                />
+                            </motion.div>
+                        )}
+                    </div>
+                </div>
+            </motion.div>
         </div>
     );
 };

@@ -59,7 +59,39 @@ export default function MainPage() {
                         })
                     );
                 }
+                if (message.type === 'check-lobby-response') {
+                    if (message.isValid){
+                        const name = profile ? profile.displayname : '';
+                        socket.send(
+                            JSON.stringify({
+                                type: 'join-lobby',
+                                gameId,
+                                playerName: name.trim(),
+                            })
+                        );
+                        navigate(`/lobby/${gameId}`, {
+                            state: {
+                                playerName: name.trim(),
+                                isHost: false,
+                            },
+                        });
+                    } else {
+                        showAlert(
+                            <span>
+                            <span className="text-red-500 font-bold text-xl">Invalid lobby or game already in progress.</span><br/>
+                        </span>,
+                            [
+                                {
+                                    label: "Okay",
+                                    actionValue: "okay",
+                                    styleClass: "bg-green-500 text-white hover:bg-green-600",
+                                }
+                            ]
+                        );
 
+                    }
+
+                }
             };
 
             socket.send(
@@ -110,7 +142,7 @@ export default function MainPage() {
             return;
         }
         if (socket && isSocketReady && profile) {
-            const newGameId = Math.random().toString(36).substr(2, 8).toUpperCase();
+            const newGameId = Math.random().toString(36).substr(2, 5).toUpperCase();
 
             socket.send(
                 JSON.stringify({
@@ -176,27 +208,19 @@ export default function MainPage() {
         }
 
         if (socket && isSocketReady) {
-            const name = profile ? profile.displayname : '';
             socket.send(
                 JSON.stringify({
-                    type: 'join-lobby',
+                    type: 'check-lobby',
                     gameId,
-                    playerName: name.trim(),
                 })
             );
-            navigate(`/lobby/${gameId}`, {
-                state: {
-                    playerName: name.trim(),
-                    isHost: false,
-                },
-            });
         } else {
             sendErrorAlert();
         }
     };
 
     return (
-        <div className="min-h-screen bg-gradient-to-br from-indigo-500 to-blue-600 flex items-center justify-center p-6">
+        <div className="min-h-screen bg-gradient-to-r from-indigo-400 to-blue-700 flex items-center justify-center p-6 ">
             {/* Animated container for the main card */}
             <motion.div
                 initial={{ opacity: 0, y: 20 }}
@@ -232,10 +256,13 @@ export default function MainPage() {
                         {/* Create & Join Game Section */}
                         <div className="mt-8 grid grid-cols-1 md:grid-cols-2 gap-6">
                             {/* Create Game Box */}
-                            <div className="flex flex-col justify-center items-center bg-gradient-to-br from-green-400 to-green-500 p-6 rounded-lg shadow hover:shadow-lg transition">
+                            <div className="flex flex-col justify-center items-center bg-gray-50 p-6 rounded-lg border-gray-200 shadow">
+                                <h3 className="text-2xl font-semibold text-gray-800 text-center mb-4">
+                                    Create a Game
+                                </h3>
                                 <button
                                     onClick={handleCreateGame}
-                                    className="w-full py-3 px-6 text-white text-xl font-semibold focus:outline-none"
+                                    className="w-full h-full py-3 px-6 text-white bg-green-500 hover:bg-green-600 text-xl rounded-lg font-semibold focus:outline-none transition-colors duration-200"
                                 >
                                     Create Game
                                 </button>
@@ -256,7 +283,7 @@ export default function MainPage() {
                                             type="text"
                                             value={gameId}
                                             onChange={(e) => setGameId(e.target.value)}
-                                            placeholder="Enter game ID to join"
+                                            placeholder="Enter Game ID to join"
                                             className="mt-2 p-3 border border-gray-300 rounded focus:outline-none focus:ring-2 focus:ring-blue-500"
                                         />
                                     </div>
@@ -282,11 +309,11 @@ export default function MainPage() {
                                 <ul className="list-disc ml-6 mt-4 text-lg text-gray-700">
                                     <li> To create a game you will first need to make an account in the top right.</li>
                                     <li> You don't need an account to join a game as a guest. Just insert the code your friend gave you above.</li>
-                                    <li> consider creating an account to customize your profile, create games, and more!</li>
-                                    <li> Once your in a lobby you select categories that you want to have questions generated for.</li>
-                                    <li> If your the host press the start game button to begin! otherwise wait for the host to begin.</li>
+                                    <li> Consider creating an account to customize your profile, create games, and more!</li>
+                                    <li> Once you're in a lobby, select categories that you want to have questions generated for.</li>
+                                    <li> If you're the host, press the "Start Game" button to begin! Otherwise wait for the host to begin.</li>
                                     <li> The host controls the game, once they are done reading the prompt they unlock the buzzer and the players race to buzz in if they know the answer.</li>
-                                    <li>Have fun and enjoy the game!</li>
+                                    <li> Have fun and enjoy the game!</li>
                                 </ul>
                             </details>
                         </div>
@@ -305,13 +332,11 @@ export default function MainPage() {
                                     <span className="mb-t text-lg text-bold text-gray-700">
                                         The host is shown a model section field, for the most part you can leave this as is.
                                         However, if you want to change the model you can do so by clicking the dropdown and selecting a model from the list.
-                                        Because the use of some of these models is quite expensive some of them cost tokens.
+                                        The use of some of these models is quite expensive, some of them cost tokens.
                                     </span>
                                 </p>
                             </details>
                         </div>
-
-
                     </div>
 
                     {/* Sponsored/Banner Ad Column */}

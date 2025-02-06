@@ -32,7 +32,7 @@ export const UserProfileProvider: React.FC<{ children: ReactNode }> = ({ childre
     const [userProfile, setUserProfile] = useState<UserProfile | null>(null);
     const [userProfileLoading, setUserProfileLoading] = useState(true);
     const [error, setError] = useState<string | null>(null);
-    const { user } = useAuth();
+    const { user, loading } = useAuth();
 
     // Fetch the profile from Supabase
     const fetchProfile = async () => {
@@ -87,7 +87,7 @@ export const UserProfileProvider: React.FC<{ children: ReactNode }> = ({ childre
     // Fetch the profile on component mount
     useEffect(() => {
         fetchProfile();
-    }, [user]);
+    }, [user, loading]);
 
     // Provide the context value
     return (

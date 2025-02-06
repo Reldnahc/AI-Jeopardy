@@ -1,9 +1,9 @@
 import React from "react";
 import { ReactSketchCanvas } from "react-sketch-canvas";
-import { convertToSVG, DrawingPath } from "../utils/drawingUtils";
-import { Clue } from "../types";
-import { useWebSocket } from "../contexts/WebSocketContext.tsx";
-import {Player} from "../types/Lobby.ts";
+import { convertToSVG, DrawingPath } from "../../utils/drawingUtils.tsx";
+import { Clue } from "../../types.ts";
+import { useWebSocket } from "../../contexts/WebSocketContext.tsx";
+import {Player} from "../../types/Lobby.ts";
 
 interface SelectedClueDisplayProps {
     localSelectedClue: Clue;
@@ -42,15 +42,15 @@ const SelectedClueDisplay: React.FC<SelectedClueDisplayProps> = ({
     const { socket, isSocketReady } = useWebSocket();
 
     return (
-        <div className="absolute inset-0 bg-gray-800 text-white flex flex-col justify-center items-center z-10 p-5">
+        <div className="absolute inset-0  text-white flex flex-col justify-center items-center z-10 p-5">
             <div className="text-center cursor-pointer w-full">
                 {/* Question */}
-                <h1 className="text-4xl mb-5">{localSelectedClue.question}</h1>
+                <h1 className="text-4xl mb-5 max-w-3xl mx-auto">{localSelectedClue.question}</h1>
 
                 {/* Reserve space for the answer */}
                 <div className="min-h-[100px] flex justify-center items-center">
                     {(showAnswer || hostCanSeeAnswer) && (
-                        <p className="mt-5 text-3xl text-yellow-400">{localSelectedClue.answer}</p>
+                        <p className="mt-5 text-3xl text-yellow-300">{localSelectedClue.answer}</p>
                     )}
                 </div>
 
@@ -160,18 +160,12 @@ const SelectedClueDisplay: React.FC<SelectedClueDisplayProps> = ({
                                 }
                             }
                         }}
-                        className={`mt-8 px-12 py-5 rounded-xl font-bold text-xl ${
+                        className={`mt-8 px-12 py-5 rounded-xl font-bold text-xl shadow-2xl text-white transition duration-300 ease-in-out ${
                             isFinalJeopardy && !drawings
                                 ? "bg-gray-400 cursor-not-allowed"
                                 : showAnswer
-                                    ? "bg-orange-500"
-                                    : "bg-blue-600"
-                        } text-white transition duration-300 ease-in-out hover:${
-                            isFinalJeopardy && !drawings
-                                ? "bg-gray-400"
-                                : showAnswer
-                                    ? "bg-orange-700"
-                                    : "bg-blue-800"
+                                    ? "bg-green-500 hover:bg-green-700"
+                                    : "bg-blue-700 hover:bg-blue-900"
                         }`}
                     >
                         {isFinalJeopardy && !drawings
