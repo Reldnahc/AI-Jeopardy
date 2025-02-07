@@ -1,20 +1,10 @@
-import React, { useEffect, useState } from 'react';
+import React from 'react';
 
 interface LoadingScreenProps {
-    message?: string; // Optional for flexibility
+    message?: string;
 }
 
-const LoadingScreen: React.FC<LoadingScreenProps> = ({ message }) => {
-    const [dots, setDots] = useState('');
-
-    // Animate the loading dots (cycles between ".", "..", "...")
-    useEffect(() => {
-        const interval = setInterval(() => {
-            setDots((prev) => (prev.length === 3 ? '' : prev + '.'));
-        }, 600); // Updates dots every 500ms
-        return () => clearInterval(interval); // Cleanup on unmount
-    }, []);
-
+const LoadingScreen: React.FC<LoadingScreenProps> = ({ message = 'Loading' }) => {
     return (
         <div className="flex flex-col items-center justify-center h-[calc(100vh-5.5rem)] w-screen bg-gradient-to-r from-indigo-400 to-blue-700 text-white text-center">
             {/* Spinner */}
@@ -23,10 +13,17 @@ const LoadingScreen: React.FC<LoadingScreenProps> = ({ message }) => {
                 <div className="absolute top-1/2 left-1/2 w-12 h-12 bg-gradient-to-r from-indigo-400 to-blue-700 rounded-full transform -translate-x-1/2 -translate-y-1/2"></div>
             </div>
 
-            {/* Message */}
-            <h1 className="text-4xl md:text-5xl font-bold tracking-wide animate-pulse">
-                {message || 'Loading'}
-                <span className="ml-2">{dots}</span>
+            {/* Animated Message */}
+            <h1 className="text-4xl md:text-5xl font-bold tracking-wide">
+                {message.split('').map((char, index) => (
+                    <span
+                        key={index}
+                        className="inline-block animate-jump"
+                        style={{ animationDelay: `${index * 0.05}s` }}
+                    >
+            {char === ' ' ? '\u00A0' : char}
+          </span>
+                ))}
             </h1>
         </div>
     );

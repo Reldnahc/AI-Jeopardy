@@ -1,4 +1,4 @@
-import {useEffect, useState} from 'react';
+import {useCallback, useEffect, useState} from 'react';
 import {useLocation, useParams} from 'react-router-dom';
 import JeopardyBoard from '../components/game/JeopardyBoard.tsx';
 import {Category, Clue} from "../types.ts";
@@ -8,6 +8,8 @@ import FinalScoreScreen from "../components/game/FinalScoreScreen.tsx";
 import {useWebSocket} from "../contexts/WebSocketContext.tsx";
 import {Player} from "../types/Lobby.ts";
 import {useDeviceContext} from "../contexts/DeviceContext.tsx";
+import {useNavigationBlocker} from "../hooks/useNavigationBlocker.ts";
+import MobileSidebar from "../components/game/MobileSidebar.tsx";
 
 export default function Game() {
     const {gameId} = useParams<{ gameId: string }>();
@@ -17,12 +19,10 @@ export default function Game() {
     const isHost = location.state?.isHost || false;
     const [players, setPlayers] = useState<Player[]>(location.state?.players || []);
     const [buzzResult, setBuzzResult] = useState<string | null>(null);
-    const [isBuzzed, setIsBuzzed] = useState(false);
     const [selectedClue, setSelectedClue] = useState<Clue | null>(null);
     const [clearedClues, setClearedClues] = useState<Set<string>>(new Set());
     const [buzzerLocked, setBuzzerLocked] = useState(true);
     const [activeBoard, setActiveBoard] = useState('firstBoard');
-    const [copySuccess, setCopySuccess] = useState(false);
     const [scores, setScores] = useState<Record<string, number>>({});
     const [buzzLockedOut, setBuzzLockedOut] = useState(false);//early buzz
     const [lastQuestionValue, setLastQuestionValue] = useState<number>(100);
@@ -41,6 +41,23 @@ export default function Game() {
     const { socket, isSocketReady } = useWebSocket();
     const { deviceType } = useDeviceContext();
 
+    const handleLeaveGame = useCallback(() => {
+        console.log("leave game called");
+        if (socket && isSocketReady) {
+            socket.send(JSON.stringify({
+                type: 'leave-game',
+                gameId,
+            }));
+        }
+    }, [socket, isSocketReady, gameId]); // Add dependencies
+
+
+    const { setIsLeavingPage } = useNavigationBlocker({
+        shouldBlock: !isGameOver,
+        onLeave: handleLeaveGame,
+        confirmMessage: 'Are you sure you want to leave? This will remove you from the current game.'
+    });
+
     useEffect(() => {
         document.title = 'Jeopardy! - ' + gameId;
 
@@ -52,8 +69,7 @@ export default function Game() {
                 if (message.type === 'game-state') {
                     setPlayers(message.players);
                     setHost(message.host);
-                    setBuzzResult(message.buzzResult ? `${message.buzzResult} buzzed first!` : null);
-                    setIsBuzzed(!!message.buzzResult); // Disable the buzz button if someone already buzzed
+                    setBuzzResult(message.buzzResult ? message.buzzResult : null);
                     setBoardData(message.boardData || null); // Set the board data dynamically
                     setScores(message.scores || {}); // Initialize scores
 
@@ -89,18 +105,21 @@ export default function Game() {
                 }
 
                 if (message.type === 'player-list-update') {
-                    setPlayers(message.players);
+                    const sortedPlayers = [...message.players].sort((a, b) => {
+                        if (a.name === message.host) return -1;
+                        if (b.name === message.host) return 1;
+                        return 0;
+                    });
+                    setPlayers(sortedPlayers);
                     setHost(message.host); // Add a separate state for the host
                 }
 
                 if (message.type === 'buzz-result') {
-                    setBuzzResult(`${message.playerName} buzzed!!!`);
-                    setIsBuzzed(true);
+                    setBuzzResult(message.playerName);
                 }
 
                 if (message.type === 'reset-buzzer') {
                     setBuzzResult(null);
-                    setIsBuzzed(false);
                 }
 
                 if (message.type === 'buzzer-locked') {
@@ -113,11 +132,11 @@ export default function Game() {
 
                 if (message.type === 'reset-buzzer') {
                     setBuzzResult(null);
-                    setIsBuzzed(false);
                     setBuzzerLocked(true);
                 }
 
                 if (message.type === 'game-over') {
+                    setIsLeavingPage(true);
                     setIsGameOver(true); // Switch to the Final Score Screen
                 }
 
@@ -279,7 +298,7 @@ export default function Game() {
     };
 
     const handleBuzz = () => {
-        if (isBuzzed || buzzLockedOut) return; // Prevent buzzing if temporarily locked out
+        if (buzzResult || buzzLockedOut) return; // Prevent buzzing if temporarily locked out
         if (buzzerLocked) {
             setBuzzLockedOut(true); // Temporarily lock out the player
 
@@ -323,30 +342,26 @@ export default function Game() {
         >
             {/* Sidebar */}
             {deviceType === 'mobile' ? (
-                <div></div>
-            ) : (
-                <Sidebar
-                    gameId={gameId}
+                <MobileSidebar
                     isHost={isHost}
                     host={host}
                     players={players}
                     scores={scores}
                     buzzResult={buzzResult}
-                    isBuzzed={isBuzzed}
-                    buzzLockedOut={buzzLockedOut}
-                    copySuccess={copySuccess}
-                    buzzerLocked={buzzerLocked}
                     lastQuestionValue={lastQuestionValue}
-                    selectedClue={selectedClue}
+                    handleScoreUpdate={handleScoreUpdate}
+                />
+            ) : (
+                <Sidebar
+                    isHost={isHost}
+                    host={host}
+                    players={players}
+                    scores={scores}
+                    buzzResult={buzzResult}
+                    lastQuestionValue={lastQuestionValue}
                     activeBoard={activeBoard}
-                    isFinalJeopardy={isFinalJeopardy}
-                    setCopySuccess={setCopySuccess}
-                    setBuzzerLocked={setBuzzerLocked}
-                    setIsBuzzed={setIsBuzzed}
-                    setBuzzResult={setBuzzResult}
                     handleScoreUpdate={handleScoreUpdate}
                     markAllCluesComplete={markAllCluesComplete}
-                    handleBuzz={handleBuzz}
                 />
                 )}
             {/* Jeopardy Board Section */}
@@ -371,6 +386,12 @@ export default function Game() {
                             allWagersSubmitted={allWagersSubmitted}
                             isFinalJeopardy={isFinalJeopardy}
                             drawings={drawings}
+                            setBuzzerLocked={setBuzzerLocked}
+                            setBuzzResult={setBuzzResult}
+                            handleBuzz={handleBuzz}
+                            buzzerLocked={buzzerLocked}
+                            buzzResult={buzzResult}
+                            buzzLockedOut={buzzLockedOut}
                         />
                     </>
                 )}

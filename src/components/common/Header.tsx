@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef } from "react";
-import { Link } from "react-router-dom";
+import { useLocation, useNavigate} from "react-router-dom";
 import { useAuth } from "../../contexts/AuthContext.tsx";
 import { useProfile } from "../../contexts/ProfileContext.tsx";
 import LoginForm from "./LoginForm.tsx";
@@ -7,6 +7,7 @@ import { supabase } from "../../supabaseClient.ts";
 import Avatar from "./Avatar.tsx";
 import { useUserProfile } from "../../contexts/UserProfileContext.tsx";
 import { motion, AnimatePresence } from "framer-motion";
+import {useAlert} from "../../contexts/AlertContext.tsx";
 
 const Header: React.FC = () => {
     const [dropdownOpen, setDropdownOpen] = useState(false); // Profile dropdown state
@@ -17,18 +18,41 @@ const Header: React.FC = () => {
     const dropdownRef = useRef<HTMLDivElement>(null); // Reference to the dropdown menu
     const menuRef = useRef<HTMLDivElement>(null); // Reference to the hamburger menu
     const hamburgerButton = useRef<HTMLButtonElement>(null); // Reference to the hamburger menu
+    const location = useLocation();
+    const navigate = useNavigate();
+    const { showAlert } = useAlert();
 
     // Toggle the profile dropdown
     const toggleDropdown = () => setDropdownOpen(!dropdownOpen);
 
     // Handle logout
     const handleLogout = async () => {
+        const prevent = location.pathname.includes('/game/') || location.pathname.includes('/lobby/');
+        if (prevent) {
+            showAlert(
+                <span>
+                    <span className="text-red-500 font-bold text-xl">You cannot log out in a game or lobby.</span><br/>
+                </span>,
+                [
+                    {
+                        label: "Okay",
+                        actionValue: "stay",
+                        styleClass: "bg-green-500 text-white hover:bg-green-600",
+                    },
+                ]
+            );
+            return;
+        }
         const { error } = await supabase.auth.signOut();
         if (error) {
             console.error("Error logging out:", error.message);
         } else {
             console.log("Logged out successfully!");
         }
+    };
+
+    const handleNavigate = async (to: string) => {
+        navigate(to);
     };
 
     // Close dropdown or mobile menu when clicking outside of it
@@ -57,21 +81,21 @@ const Header: React.FC = () => {
             <div className="container mx-auto flex items-center py-4 px-6 justify-between h-full">
                 {/* Left Section: Logo (and optional left-side nav links) */}
                 <div className="flex items-center space-x-6">
-                    <Link
-                        to="/"
-                        className="text-3xl font-bold hover:underline text-blue-700 hover:text-blue-500"
-                        aria-label="Go to Main Page"
+                    <button
+                        onClick={() => handleNavigate('/')}
+                        className="text-2xl md:text-3xl font-bold hover:underline text-blue-700 hover:text-blue-500"
                     >
                         AI-Jeopardy.com
-                    </Link>
+                    </button>
+
                     {/* Optional navigation links */}
                     <nav className="hidden md:flex items-center space-x-3">
-                        <Link
-                            to="/recent-boards"
+                        <button
+                            onClick={() => handleNavigate('/recent-boards')}
                             className="px-4 text-xl py-2 hover:underline hover:bg-blue-500 rounded text-white hover:text-white"
                         >
                             Recent Boards
-                        </Link>
+                        </button>
                     </nav>
                 </div>
 
@@ -115,20 +139,24 @@ const Header: React.FC = () => {
                                         exit={{ opacity: 0, scale: 0.9 }}
                                         transition={{ duration: 0.3 }}
                                     >
-                                        <Link
-                                            onClick={() => setDropdownOpen(false)}
-                                            to={`/profile/${profile.username}`}
-                                            className="block px-4 py-2 text-blue-600 hover:bg-gray-200"
+                                        <button
+                                            onClick={() => {
+                                                handleNavigate('/profile/' + profile.username);
+                                                setDropdownOpen(false);
+                                            }}
+                                            className="block px-4 py-2 text-blue-600 hover:bg-gray-200 text-left w-full"
                                         >
                                             Your Profile
-                                        </Link>
-                                        <Link
-                                            onClick={() => setDropdownOpen(false)}
-                                            to="/history"
-                                            className="block px-4 py-2 text-blue-600 hover:bg-gray-200"
+                                        </button>
+                                        <button
+                                            onClick={() => {
+                                                handleNavigate('/history');
+                                                setDropdownOpen(false);
+                                            }}
+                                            className="block px-4 py-2 text-blue-600 hover:bg-gray-200 text-left w-full"
                                         >
                                             History
-                                        </Link>
+                                        </button>
                                         <span
                                             onClick={handleLogout}
                                             className="block px-4 py-2 text-red-600 hover:bg-gray-200 cursor-pointer"
@@ -202,57 +230,53 @@ const Header: React.FC = () => {
                                 visible: { opacity: 1, transition: { staggerChildren: 0.1 } },
                             }}
                         >
-                            <motion.div
+                            <motion.button
                                 className="block px-4 py-2 hover:bg-blue-500 cursor-pointer"
+                                onClick={() => {
+                                    handleNavigate('/recent-boards');
+                                    setDropdownOpen(false);
+                                }}
                                 variants={{
                                     hidden: { opacity: 0, y: -10 },
                                     visible: { opacity: 1, y: 0 },
                                     exit: { opacity: 0, y: -10 } // Matches exit animation
                                 }}
                             >
-                                <Link
-                                    to="/recent-boards"
-                                    onClick={() => setMenuOpen(false)}
-                                >
-                                    Recent Boards
-                                </Link>
-                            </motion.div>
+                                Recent Boards
+                            </motion.button>
 
                             {user && profile && (
                                 <>
-                                    <motion.div
+                                    <motion.button
                                         className="block px-4 py-2 hover:bg-blue-500 cursor-pointer"
                                         variants={{
                                             hidden: { opacity: 0, y: -10 },
                                             visible: { opacity: 1, y: 0 },
                                             exit: { opacity: 0, y: -10 } // Matches exit animation
                                         }}
+                                        onClick={() => {
+                                            handleNavigate('/profile/' + profile.username);
+                                            setDropdownOpen(false);
+                                        }}
                                     >
-                                        <Link
-                                            to={`/profile/${profile.username}`}
-                                            onClick={() => setMenuOpen(false)}
-                                        >
-                                            Your Profile
-                                        </Link>
-                                    </motion.div>
-
-                                    <motion.div
+                                        Your Profile
+                                    </motion.button>
+                                    <motion.button
                                         className="block px-4 py-2 hover:bg-blue-500 cursor-pointer"
                                         variants={{
                                             hidden: { opacity: 0, y: -10 },
                                             visible: { opacity: 1, y: 0 },
                                             exit: { opacity: 0, y: -10 } // Matches exit animation
                                         }}
+                                        onClick={() => {
+                                            handleNavigate('/history');
+                                            setDropdownOpen(false);
+                                        }}
                                     >
-                                        <Link
-                                            to="/history"
-                                            onClick={() => setMenuOpen(false)}
-                                        >
-                                            History
-                                        </Link>
-                                    </motion.div>
+                                        Your History
+                                    </motion.button>
 
-                                    <motion.span
+                                    <motion.button
                                         className="block px-4 py-2 text-red-600 hover:bg-blue-500 cursor-pointer"
                                         variants={{
                                             hidden: { opacity: 0, y: -10 },
@@ -265,7 +289,7 @@ const Header: React.FC = () => {
                                         }}
                                     >
                                         Log out
-                                    </motion.span>
+                                    </motion.button>
                                 </>
                             )}
                         </motion.div>

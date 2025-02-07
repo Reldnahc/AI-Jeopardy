@@ -7,96 +7,50 @@ interface FinalScoreScreenProps {
 
 const FinalScoreScreen: React.FC<FinalScoreScreenProps> = ({ scores }) => {
     const navigate = useNavigate();
-
-    // Sort players by score in descending order
     const sortedScores = Object.entries(scores).sort(([, scoreA], [, scoreB]) => scoreB - scoreA);
 
     return (
-        <div
-            style={{
-                display: 'flex',
-                flexDirection: 'column',
-                alignItems: 'center',
-                justifyContent: 'center',
-                height: '100vh',
-                width: '100vw', // Full width of the screen
-                background: 'linear-gradient(to bottom, #192841, #1d3557)',
-                color: '#FFF',
-                fontFamily: "'Poppins', sans-serif",
-                textAlign: 'center',
-                padding: '40px',
-                boxSizing: 'border-box',
-            }}
-        >
-            <h1
-                style={{
-                    fontSize: '4rem',
-                    fontWeight: 'bold',
-                    marginBottom: '50px',
-                    color: '#FFD700',
-                    textShadow: '0px 4px 6px rgba(0, 0, 0, 0.3)', // Add some depth to the text
-                }}
-            >
+        <div className="min-h-screen w-full text-white font-poppins flex flex-col items-center justify-center p-8">
+            <h1 className="text-5xl md:text-6xl font-bold mb-12 text-yellow-400 drop-shadow-lg animate-fade-in">
                 Final Scores
             </h1>
-            <div
-                style={{
-                    display: 'grid',
-                    gridTemplateColumns: 'repeat(auto-fit, minmax(300px, 1fr))', // Responsive grid
-                    gap: '40px', // Space between score entries
-                    width: '85%', // Take up more of the screen width
-                    maxWidth: '1400px', // Cap maximum width for readability
-                }}
-            >
+
+            <div className="w-full max-w-7xl grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 px-4 mb-12">
                 {sortedScores.map(([player, score], index) => (
                     <div
                         key={player}
-                        style={{
-                            display: 'flex',
-                            justifyContent: 'space-between',
-                            alignItems: 'center',
-                            fontSize: '2rem',
-                            fontWeight: index === 0 ? 'bold' : 'normal',
-                            padding: '20px 30px',
-                            backgroundColor: index === 0 ? '#FFD700' : 'rgba(255, 255, 255, 0.1)',
-                            borderRadius: '15px', // Rounded corners for modern look
-                            color: index === 0 ? '#1C1C1C' : '#FFF', // Contrast for first place
-                            boxShadow: '0 4px 8px rgba(0, 0, 0, 0.2)', // More polished shadow effect
-                            transition: 'transform 0.2s ease, box-shadow 0.2s ease',
-                        }}
-                        onMouseOver={(e) => (e.currentTarget.style.transform = 'scale(1.05)')}
-                        onMouseOut={(e) => (e.currentTarget.style.transform = 'scale(1.0)')}
+                        className={`
+                            flex justify-between items-center p-6 rounded-2xl
+                            transform transition-all duration-300 hover:scale-105
+                            ${index === 0
+                            ? 'bg-gradient-to-r from-yellow-400 to-yellow-500 text-gray-900 shadow-yellow-400/50'
+                            : 'bg-white/10 backdrop-blur-sm'}
+                            shadow-lg hover:shadow-xl
+                        `}
                     >
-                        <span>{player}</span>
-                        <span>${score}</span>
+                        <span className={`text-2xl ${index === 0 ? 'font-bold' : 'font-semibold'}`}>
+                            {player}
+                        </span>
+                        <span className={`text-2xl ${index === 0 ? 'font-bold' : ''}`}>
+                            ${score.toLocaleString()}
+                        </span>
                     </div>
                 ))}
             </div>
+
             <button
-                onClick={() => navigate('/')} // Navigate Home
-                style={{
-                    marginTop: '50px',
-                    padding: '20px 50px',
-                    fontSize: '1.8rem',
-                    fontWeight: 'bold',
-                    color: 'white',
-                    background: 'rgba(255, 87, 34, 0.9)',
-                    border: 'none',
-                    borderRadius: '12px',
-                    cursor: 'pointer',
-                    boxShadow: '0 6px 12px rgba(0, 0, 0, 0.2)',
-                    transition: 'transform 0.3s ease, box-shadow 0.3s ease',
-                }}
-                onMouseOver={(e) => {
-                    e.currentTarget.style.transform = 'scale(1.05)';
-                    e.currentTarget.style.boxShadow = '0 8px 16px rgba(0, 0, 0, 0.3)';
-                }}
-                onMouseOut={(e) => {
-                    e.currentTarget.style.transform = 'scale(1.0)';
-                    e.currentTarget.style.boxShadow = '0 6px 12px rgba(0, 0, 0, 0.2)';
-                }}
+                onClick={() => navigate('/')}
+                className="
+                    px-12 py-4 text-xl font-bold
+                    bg-gradient-to-r from-orange-500 to-red-500
+                    text-white rounded-xl
+                    transform transition-all duration-300
+                    hover:scale-105 hover:shadow-xl
+                    focus:outline-none focus:ring-2 focus:ring-orange-500 focus:ring-opacity-50
+                    shadow-lg
+                "
             >
-                Home
+                Return Home
             </button>
         </div>
     );

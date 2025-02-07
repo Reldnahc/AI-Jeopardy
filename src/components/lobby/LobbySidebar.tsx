@@ -28,7 +28,7 @@ const LobbySidebar: React.FC<LobbySidebarProps> = ({
     };
 
     return (
-        <div className="flex flex-col h-full w-full gap-5 box-border relative z-50">
+        <div className="flex flex-col h-full w-full gap-5 box-border relative z-30">
             {/* Game ID and Host Card */}
             <div
                 onClick={copyGameIdToClipboard}
@@ -54,7 +54,7 @@ const LobbySidebar: React.FC<LobbySidebarProps> = ({
             </div>
 
             {/* Player List Section */}
-            <div className="flex flex-col gap-3 -mt-5">
+            <div className="flex flex-col gap-3 -mt-7">
                 <h2 className="text-2xl font-extrabold bg-gradient-to-r from-[#1e88e5] via-[#3d5afe] to-[#5c6bc0] text-white px-5 py-5 rounded-lg text-center shadow-md">
                     Players
                 </h2>
@@ -81,7 +81,7 @@ const LobbySidebar: React.FC<LobbySidebarProps> = ({
                                     {player.name}
                                 </span>
                                 {host === player.name && (
-                                    <span className="text-yellow-500 text-sm">Host</span>
+                                    <span className="text-yellow-500 text-sm -mt-2">Host</span>
                                 )}
                             </div>
                         </li>

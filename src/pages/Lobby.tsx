@@ -1,6 +1,6 @@
 import React, { useEffect, useState } from 'react';
 import randomCategoryList from '../data/randomCategories';
-import { useLocation, useNavigate, useParams } from "react-router-dom";
+import { useLocation, useNavigate, useParams} from "react-router-dom";
 import { useWebSocket } from "../contexts/WebSocketContext.tsx";
 import LobbySidebar from "../components/lobby/LobbySidebar.tsx";
 import LoadingScreen from "../components/common/LoadingScreen.tsx";
@@ -11,6 +11,7 @@ import {Player} from "../types/Lobby.ts";
 import {useProfile} from "../contexts/ProfileContext.tsx";
 import {useAlert} from "../contexts/AlertContext.tsx";
 import { motion } from 'framer-motion';
+import {useNavigationBlocker} from "../hooks/useNavigationBlocker.ts";
 
 type LockedCategories = {
     firstBoard: boolean[]; // Jeopardy lock states
@@ -36,7 +37,6 @@ const Lobby: React.FC = () => {
     const { gameId } = useParams<{ gameId: string }>();
     const [isLoading, setIsLoading] = useState(false);
     const [loadingMessage, setLoadingMessage] = useState('');
-    const [loadingDots, setLoadingDots] = useState('');
     const [copySuccess, setCopySuccess] = useState(false);
     const [players, setPlayers] = useState<Player[]>(location.state?.players || []);
     const [host, setHost] = useState<string | null>(null);
@@ -52,6 +52,22 @@ const Lobby: React.FC = () => {
     const { profile } = useProfile();
     const { showAlert } = useAlert();
 
+    const handleLeaveLobby = () => {
+        console.log("leave lobby called");
+        if (socket && isSocketReady && profile?.displayname) {
+            socket.send(JSON.stringify({
+                type: 'leave-lobby',
+                gameId,
+                playerId: profile.displayname
+            }));
+        }
+    };
+
+    const { setIsLeavingPage } = useNavigationBlocker({
+        shouldBlock: !isLoading,
+        onLeave: handleLeaveLobby,
+        confirmMessage: 'Are you sure you want to leave? This will remove you from the current lobby.'
+    });
 
     useEffect(() => {
         if (socket && isSocketReady) {
@@ -59,7 +75,12 @@ const Lobby: React.FC = () => {
                 const message = JSON.parse(event.data);
                 console.log(message);
                 if (message.type === 'player-list-update') {
-                    setPlayers(message.players);
+                    const sortedPlayers = [...message.players].sort((a, b) => {
+                        if (a.name === message.host) return -1;
+                        if (b.name === message.host) return 1;
+                        return 0;
+                    });
+                    setPlayers(sortedPlayers);
                     setHost(message.host);
                 }
 
@@ -112,6 +133,7 @@ const Lobby: React.FC = () => {
 
                 if (message.type === 'start-game' && profile) {
                     setIsLoading(false);
+                    setIsLeavingPage(true); // Set this before navigation
                     socket.send(
                         JSON.stringify({
                             type: 'join-game',
@@ -148,45 +170,6 @@ const Lobby: React.FC = () => {
             setIsLoading(true);
         }
     }, [isSocketReady, gameId]);
-
-    useEffect(() => {
-        if (isLoading) {
-            // Define the ellipsis pattern
-            const dotsPattern = ['', '.', '..', '...'];
-            let currentIndex = 0;
-
-            // Start an interval to loop through the dots pattern
-            const interval = setInterval(() => {
-                setLoadingDots(dotsPattern[currentIndex]);
-                currentIndex = (currentIndex + 1) % dotsPattern.length;
-            }, 750);
-
-            // Cleanup interval when loading stops
-            return () => clearInterval(interval);
-        }
-    }, [isLoading]);
-
-    useEffect(() => {
-        const handlePageLeave = () => {
-            console.log('Page unloaded');
-            if (socket && gameId) {
-                console.log('sending leave game');
-
-                // Notify the server to remove the player from the game
-                socket.send(
-                    JSON.stringify({
-                        type: 'leave-game', // Message type for leaving the game
-                        gameId,            // The current game
-                    })
-                );
-            }
-        };
-
-        // Handle browser tab close, refresh, or manual navigation
-        window.addEventListener("beforeunload", handlePageLeave);
-
-    }, [gameId, socket]);
-
 
     const onToggleLock = (
         boardType: 'firstBoard' | 'secondBoard' | 'finalJeopardy',
@@ -376,7 +359,7 @@ const Lobby: React.FC = () => {
     };
 
     return isLoading ? (
-        <LoadingScreen message={loadingMessage} loadingDots={loadingDots} />
+        <LoadingScreen message={loadingMessage}/>
     ) : (
         <div className="min-h-[calc(100vh-5.5rem)] bg-gradient-to-r from-indigo-400 to-blue-700 p-6">
             <motion.div

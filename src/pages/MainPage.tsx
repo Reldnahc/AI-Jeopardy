@@ -65,11 +65,11 @@ export default function MainPage() {
                         socket.send(
                             JSON.stringify({
                                 type: 'join-lobby',
-                                gameId,
+                                gameId: message.gameId,
                                 playerName: name.trim(),
                             })
                         );
-                        navigate(`/lobby/${gameId}`, {
+                        navigate(`/lobby/${message.gameId}`, {
                             state: {
                                 playerName: name.trim(),
                                 isHost: false,
@@ -284,7 +284,7 @@ export default function MainPage() {
                                             value={gameId}
                                             onChange={(e) => setGameId(e.target.value)}
                                             placeholder="Enter Game ID to join"
-                                            className="mt-2 p-3 border border-gray-300 rounded focus:outline-none focus:ring-2 focus:ring-blue-500"
+                                            className="mt-2 p-3 border border-gray-300 text-black rounded focus:outline-none focus:ring-2 focus:ring-blue-500"
                                         />
                                     </div>
                                     <button

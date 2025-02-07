@@ -21,11 +21,18 @@ interface JeopardyBoardProps {
     allWagersSubmitted: boolean;
     isFinalJeopardy: boolean;
     drawings: Record<string, DrawingPath[]> | null;
+    setBuzzerLocked: React.Dispatch<React.SetStateAction<boolean>>;
+    setBuzzResult: React.Dispatch<React.SetStateAction<string | null>>;
+    handleBuzz: () => void;
+    buzzerLocked: boolean;
+    buzzResult: string | null;
+    buzzLockedOut: boolean;
 }
 
 const JeopardyBoard: React.FC<JeopardyBoardProps> =
     ({ boardData, isHost, onClueSelected, selectedClue, gameId, clearedClues, players, scores,
-         currentPlayer, allWagersSubmitted, isFinalJeopardy, drawings}) => {
+         currentPlayer, allWagersSubmitted, isFinalJeopardy, drawings, setBuzzerLocked,
+         setBuzzResult, handleBuzz, buzzerLocked, buzzResult, buzzLockedOut }) => {
     const [localSelectedClue, setLocalSelectedClue] = useState<Clue | null>(null);
     const [showClue, setShowClue] = useState(false);
     const [showAnswer, setShowAnswer] = useState(false);
@@ -35,7 +42,6 @@ const JeopardyBoard: React.FC<JeopardyBoardProps> =
     const [drawingSubmitted, setDrawingSubmitted] = useState<Record<string, boolean>>({});
     const { socket, isSocketReady } = useWebSocket();
     const { showAlert } = useAlert();
-
 
         // @ts-expect-error works better this way
     const canvasRef = useRef< ReactSketchCanvas>(null);
@@ -179,6 +185,12 @@ const JeopardyBoard: React.FC<JeopardyBoardProps> =
                         setDrawingSubmitted={setDrawingSubmitted}
                         hostCanSeeAnswer={hostCanSeeAnswer}
                         players={players}
+                        setBuzzerLocked={setBuzzerLocked}
+                        setBuzzResult={setBuzzResult}
+                        handleBuzz={handleBuzz}
+                        buzzerLocked={buzzerLocked}
+                        buzzResult={buzzResult}
+                        buzzLockedOut={buzzLockedOut}
                     />
                 )}
             </div>

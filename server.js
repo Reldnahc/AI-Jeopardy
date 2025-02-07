@@ -264,16 +264,14 @@ wss.on('connection', (ws) => {
         }
 
         if (data.type === 'check-lobby') {
+            console.log("checking lobby: " + data.gameId);
             const {gameId} = data;
             let isValid = false;
             if (games[gameId] && games[gameId].inLobby === true) {
                 isValid = true;
             }
 
-            broadcast(gameId, {
-                type: 'check-lobby-response',
-                isValid,
-            });
+            ws.send(JSON.stringify({ type: 'check-lobby-response', isValid, gameId }));
         }
 
         if (data.type === 'check-cotd') {
