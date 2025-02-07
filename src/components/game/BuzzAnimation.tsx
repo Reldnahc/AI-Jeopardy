@@ -7,6 +7,7 @@ interface BuzzAnimationProps {
 }
 
 const BuzzAnimation: React.FC<BuzzAnimationProps> = ({ playerName }) => {
+
     const [showAnimation, setShowAnimation] = useState(false);
 
     useEffect(() => {

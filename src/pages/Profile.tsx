@@ -202,7 +202,7 @@ const Profile: React.FC = () => {
                                         {colors.map((color) => (
                                             <div
                                                 key={color}
-                                                className={`w-8 h-8 rounded-full cursor-pointer ${color} ${
+                                                className={`w-8 h-8 rounded-full border border-gray-300 cursor-pointer ${color} ${
                                                     selectedColor === color
                                                         ? "ring-4 ring-blue-400"
                                                         : ""
@@ -220,7 +220,7 @@ const Profile: React.FC = () => {
                                         {textColors.map((color) => (
                                             <div
                                                 key={color}
-                                                className={`w-8 h-8 rounded-full cursor-pointer ${color.replace(
+                                                className={`w-8 h-8 rounded-full border border-gray-300 cursor-pointer ${color.replace(
                                                     "text",
                                                     "bg"
                                                 )} ${

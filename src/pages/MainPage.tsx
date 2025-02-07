@@ -142,12 +142,10 @@ export default function MainPage() {
             return;
         }
         if (socket && isSocketReady && profile) {
-            const newGameId = Math.random().toString(36).substr(2, 5).toUpperCase();
 
             socket.send(
                 JSON.stringify({
                     type: 'create-lobby',
-                    gameId: newGameId,
                     host: profile.displayname,
                     categories: handleGenerateRandomCategories(),
                 })
@@ -304,7 +302,7 @@ export default function MainPage() {
                                     How to Play
                                 </summary>
                                 <p className="mt-4 text-lg text-gray-700">
-                                    Welcome to AI Jeopardy! This is currently a work in progress so please be patient.
+                                    Welcome to AI Jeopardy! This is a new project so please be patient.
                                 </p>
                                 <ul className="list-disc ml-6 mt-4 text-lg text-gray-700">
                                     <li> To create a game you will first need to make an account in the top right.</li>

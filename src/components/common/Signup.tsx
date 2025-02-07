@@ -139,7 +139,7 @@ const Signup = () => {
                         onChange={(e) => setEmail(e.target.value)}
                         placeholder="Enter your email"
                         required
-                        className="w-full p-3 border border-gray-300 rounded focus:outline-none focus:ring-2 focus:ring-blue-500"
+                        className="w-full p-3 border border-gray-300 text-black rounded focus:outline-none focus:ring-2 focus:ring-blue-500"
                     />
                 </div>
                 <div>
@@ -153,7 +153,7 @@ const Signup = () => {
                         onChange={handleUsernameChange}
                         placeholder="Enter your username"
                         required
-                        className={`w-full p-3 border rounded focus:outline-none focus:ring-2 ${
+                        className={`w-full p-3 border rounded text-black focus:outline-none focus:ring-2 ${
                             usernameError
                                 ? "border-red-500 focus:ring-red-500"
                                 : "border-gray-300 focus:ring-blue-500"
@@ -172,7 +172,7 @@ const Signup = () => {
                         onChange={(e) => setPassword(e.target.value)}
                         placeholder="Enter a strong password"
                         required
-                        className="w-full p-3 border border-gray-300 rounded focus:outline-none focus:ring-2 focus:ring-blue-500"
+                        className="w-full p-3 border border-gray-300 text-black rounded focus:outline-none focus:ring-2 focus:ring-blue-500"
                     />
                 </div>
                 <div>
@@ -186,7 +186,7 @@ const Signup = () => {
                         onChange={(e) => setConfirmPassword(e.target.value)}
                         placeholder="Confirm your password"
                         required
-                        className="w-full p-3 border border-gray-300 rounded focus:outline-none focus:ring-2 focus:ring-blue-500"
+                        className="w-full p-3 border border-gray-300 text-black rounded focus:outline-none focus:ring-2 focus:ring-blue-500"
                     />
                 </div>
 

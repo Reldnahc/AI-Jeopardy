@@ -6,4 +6,8 @@ export default defineConfig({
   plugins: [react()],
   server: { allowedHosts: true},
   base: '/',
+  envDir: '.',
+  build: {
+    chunkSizeWarningLimit: 700, // Setting this to 700kb gives you some headroom
+  },
 })
