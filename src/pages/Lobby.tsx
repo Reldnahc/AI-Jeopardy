@@ -37,6 +37,9 @@ const Lobby: React.FC = () => {
     const { gameId } = useParams<{ gameId: string }>();
     const [isLoading, setIsLoading] = useState(false);
     const [loadingMessage, setLoadingMessage] = useState('');
+    const [temperature, setTemperature] = useState(0.1);
+    const [timeToBuzz, setTimeToBuzz] = useState(10);
+    const [timeToAnswer, setTimeToAnswer] = useState(10);
     const [copySuccess, setCopySuccess] = useState(false);
     const [players, setPlayers] = useState<Player[]>(location.state?.players || []);
     const [host, setHost] = useState<string | null>(null);
@@ -134,13 +137,6 @@ const Lobby: React.FC = () => {
                 if (message.type === 'start-game' && profile) {
                     setIsLoading(false);
                     setIsLeavingPage(true); // Set this before navigation
-                    socket.send(
-                        JSON.stringify({
-                            type: 'join-game',
-                            gameId,
-                            playerName: profile.displayname,
-                        })
-                    );
                     navigate(`/game/${gameId}`, {
                         state: {
                             playerName: profile.displayname.trim(),
@@ -149,6 +145,14 @@ const Lobby: React.FC = () => {
                             boardData: message.boardData,
                         },
                     });
+                    socket.send(
+                        JSON.stringify({
+                            type: 'join-game',
+                            gameId,
+                            playerName: profile.displayname,
+                            respond: true,
+                        })
+                    );
                 }
 
                 if (message.type === 'check-lobby-response') {
@@ -343,6 +347,9 @@ const Lobby: React.FC = () => {
                         type: 'create-game',
                         gameId,
                         host: profile.displayname,
+                        temperature,
+                        timeToBuzz,
+                        timeToAnswer,
                         categories: [
                             ...categories.firstBoard,
                             ...categories.secondBoard,
@@ -435,6 +442,12 @@ const Lobby: React.FC = () => {
                                     selectedModel={selectedModel}
                                     onModelChange={handleDropdownChange}
                                     onCreateGame={handleCreateGame}
+                                    temperature={temperature}
+                                    timeToBuzz={timeToBuzz}
+                                    setTemperature={setTemperature}
+                                    setTimeToBuzz={setTimeToBuzz}
+                                    timeToAnswer={timeToAnswer}
+                                    setTimeToAnswer={setTimeToAnswer}
                                 />
                             </motion.div>
                         )}

@@ -6,6 +6,7 @@ import { useWebSocket } from "../../contexts/WebSocketContext.tsx";
 import { Player } from "../../types/Lobby.ts";
 import {useDeviceContext} from "../../contexts/DeviceContext.tsx";
 import BuzzAnimation from "./BuzzAnimation.tsx";
+import Timer from "./Timer.tsx";
 
 interface SelectedClueDisplayProps {
     localSelectedClue: Clue;
@@ -29,6 +30,8 @@ interface SelectedClueDisplayProps {
     buzzerLocked: boolean;
     buzzResult: string | null;
     buzzLockedOut: boolean;
+    timerEndTime: number | null;
+    timerDuration: number;
 }
 
 const SelectedClueDisplay: React.FC<SelectedClueDisplayProps> = ({
@@ -52,11 +55,16 @@ const SelectedClueDisplay: React.FC<SelectedClueDisplayProps> = ({
                                                                      buzzerLocked,
                                                                      buzzResult,
                                                                      buzzLockedOut,
+                                                                     timerEndTime,
+                                                                     timerDuration
                                                                  }) => {
     const { socket, isSocketReady } = useWebSocket();
     const {deviceType} = useDeviceContext()
     return (
         <div className="absolute inset-0 h-[calc(100vh-5.5rem)] text-white flex flex-col justify-center items-center z-10 p-5">
+            <div className="absolute left-8 top-0 ">
+                <Timer endTime={timerEndTime} duration={timerDuration} />
+            </div>
                 <BuzzAnimation playerName={buzzResult} />
 
                 <div className="text-center cursor-pointer w-full">
@@ -166,7 +174,7 @@ const SelectedClueDisplay: React.FC<SelectedClueDisplayProps> = ({
                     </div>
                 )}
 
-                {!isHost && !isFinalJeopardy && (
+                {!isHost && !isFinalJeopardy && !showAnswer && (
                     <button
                         onClick={handleBuzz}
                         disabled={!!buzzResult || buzzLockedOut}
@@ -183,17 +191,17 @@ const SelectedClueDisplay: React.FC<SelectedClueDisplayProps> = ({
                         {buzzLockedOut ? "Locked Out" : buzzerLocked ? "Buzz Early" : "Buzz!"}
                     </button>
                 )}
-                {isHost && !(players.length === 1 && isHost) && !isFinalJeopardy && (
+                {isHost && !(players.length === 1 && isHost) && !showAnswer && !isFinalJeopardy && (
                     <button
                         onClick={() => {
                             if (buzzerLocked) {
                                 if (socket && isSocketReady) {
-                                    socket.send(JSON.stringify({ type: "unlock-buzzer", gameId }));
+                                    socket.send(JSON.stringify({ type: 'unlock-buzzer', gameId }));
                                 }
                                 setBuzzerLocked(false);
                             } else {
                                 if (socket && isSocketReady) {
-                                    socket.send(JSON.stringify({ type: "reset-buzzer", gameId }));
+                                    socket.send(JSON.stringify({ type: 'reset-buzzer', gameId }));
                                 }
                                 setBuzzResult(null);
                                 setBuzzerLocked(true);
@@ -218,7 +226,7 @@ const SelectedClueDisplay: React.FC<SelectedClueDisplayProps> = ({
                                 if (socket && isSocketReady) {
                                     socket.send(
                                         JSON.stringify({
-                                            type: "reveal-answer",
+                                            type: 'reveal-answer',
                                             gameId,
                                         })
                                     );

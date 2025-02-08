@@ -14,6 +14,7 @@ import RecentBoards from "./pages/RecentBoards.tsx";
 import {UserProfileProvider} from "./contexts/UserProfileContext.tsx";
 import {AlertProvider} from "./contexts/AlertContext.tsx";
 import {DeviceProvider} from "./contexts/DeviceContext.tsx";
+import NotFoundPage from "./pages/NotFoundPage.tsx";
 // Create a Layout component that includes the Header
 const Layout = ({ children }: { children: React.ReactNode }) => (
     <>
@@ -43,6 +44,10 @@ const router = createHashRouter([
     {
         path: "/recent-boards",
         element: <Layout><RecentBoards /></Layout>
+    },
+    {
+        path: "*",
+        element: <Layout><NotFoundPage /></Layout>
     }
 ]);
 

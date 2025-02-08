@@ -1,28 +1,18 @@
 import { WebSocketServer } from 'ws';
 import 'dotenv/config';
-import OpenAI from "openai";
-import Anthropic from "@anthropic-ai/sdk";
 import { createBoardData, createCategoryOfTheDay } from './services/aiService.js';
-//ai calls
-const openai = new OpenAI();
-const anthropic = new Anthropic();
-const deepseek = new OpenAI({
-    baseURL: 'https://api.deepseek.com',
-    apiKey: process.env.DEEPSEEK_API_KEY
-});
-
-const wss = new WebSocketServer({ port: WS_PORT, });
-console.log(`WebSocket server running on ws://localhost:${WS_PORT}`);
-//express and supabase
 import express from "express"; // Import express
 import cors from "cors"; // Import cors
 import bodyParser from "body-parser"; // Import body-parser
 import {PING_INTERVAL, WS_PORT} from "./config/websocket.js";
 import {supabase} from "./config/database.js";
+import {getColorFromPlayerName} from "./services/userService.js";
+
 const app = express(); // Initialize Express app
 app.use(cors());
 app.use(bodyParser.json());
-
+const wss = new WebSocketServer({ port: WS_PORT, });
+console.log(`WebSocket server running on ws://localhost:${WS_PORT}`);
 
 const authenticateRequest = async (req, res, next) => {
     const authHeader = req.headers.authorization;
@@ -53,43 +43,9 @@ const games = {};
 
 let cotd =
     {
-    category: "Science & Nature",
-    description: "Explore the wonders of the natural world and the marvels of modern science."
+    category: "",
+    description: ""
     };
-
-async function getIdFromUsername(username) {
-
-    const { data, error } = await supabase
-        .from('profiles')
-        .select('id, username') // Correct syntax for selecting multiple fields
-        .eq('username', username.toLowerCase())
-        .single(); // Fetch a single matching row
-
-    if (error) {
-        console.error('Error fetching ID:', error.message);
-        return null; // Return null or throw an error, based on your use case
-    }
-    return data?.id; // Access the `id` field from `data` and handle potential null values
-}
-
-async function getColorFromPlayerName(username) {
-
-    const id = await getIdFromUsername(username);
-
-    const { data, error } = await supabase
-        .from('user_profiles')
-        .select('color, text_color')
-        .eq('id', id)
-        .single();
-
-    if (error) {
-        console.error('Error fetching color:', error.message);
-        return null; // Return null or throw an error, based on your use case
-    }
-    console.log(data);
-
-    return data;
-}
 
 wss.on('connection', (ws) => {
     ws.id = Math.random().toString(36).substr(2, 9); // Assign a unique ID to each socket
@@ -224,13 +180,13 @@ wss.on('connection', (ws) => {
         }
 
         if (data.type === 'create-game') {
-            const {gameId, categories, selectedModel, host} = data;
+            const {gameId, categories, selectedModel, host, temperature, timeToBuzz, timeToAnswer} = data;
 
             broadcast(gameId, {
                 type: 'trigger-loading',
             });
 
-            const boardData = await createBoardData(categories, selectedModel, host);
+            const boardData = await createBoardData(categories, selectedModel, host, temperature);
 
             console.log(boardData);
 
@@ -238,12 +194,14 @@ wss.on('connection', (ws) => {
                 //error handle
                 console.log("error moving from lobby to game. game reference not found.");
             } else if (games[gameId].inLobby) {
-                games[gameId].buzzed = null;//TODO this should default
-                games[gameId].buzzerLocked = true;//this should default
-                games[gameId].clearedClues = new Set();//this should default
+                games[gameId].buzzed = null;
+                games[gameId].buzzerLocked = true;
+                games[gameId].clearedClues = new Set();
                 games[gameId].boardData = boardData;
-                games[gameId].scores = {}; //this should default
+                games[gameId].scores = {};
                 games[gameId].inLobby = false;
+                games[gameId].timeToBuzz = timeToBuzz;
+                games[gameId].timeToAnswer = timeToAnswer;
 
                 console.log(games[gameId].players);
                 broadcast(gameId, {
@@ -255,11 +213,6 @@ wss.on('connection', (ws) => {
             }else{
                 console.log("error moving from lobby to game. game already in progress.");
             }
-
-        }
-
-        if (data.type === 'request-join-lobby') {
-
 
         }
 
@@ -316,6 +269,10 @@ wss.on('connection', (ws) => {
         if (data.type === 'buzz') {
             const { gameId } = data;
 
+            games[gameId].timerVersion = (games[gameId].timerVersion || 0) + 1;
+            const currentVersion = games[gameId].timerVersion;
+
+
             if (games[gameId] && !games[gameId].buzzed) {
                 const player = games[gameId].players.find(player => player.id === ws.id);
                 if (player && player.name){
@@ -327,6 +284,31 @@ wss.on('connection', (ws) => {
                     });
                 }
             }
+
+
+            // Only start timer if timeToBuzz is not -1 (infinite time)
+            if (games[gameId].timeToAnswer !== -1) {
+                // Store the end time (current time + duration)
+                const endTime = Date.now() + (games[gameId].timeToAnswer * 1000);
+                games[gameId].timerEndTime = endTime;
+
+                // Broadcast initial timer state to all players
+                broadcast(gameId, {
+                    type: 'timer-start',
+                    endTime: endTime,
+                    duration: games[gameId].timeToAnswer,
+                    timerVersion: currentVersion
+                });
+
+                setTimeout(() => {
+                    // Only lock the buzzer if it hasn't been locked already
+                    if (games[gameId] && games[gameId].timerVersion === currentVersion
+                        && games[gameId].buzzed) {
+                        games[gameId].timerEndTime = null; // Clear the timer end time
+                        broadcast(gameId, {type: 'timer-end'});
+                    }
+                }, games[gameId].timeToBuzz * 1000);
+            }
         }
 
         if (data.type === 'reset-buzzer') {
@@ -335,6 +317,8 @@ wss.on('connection', (ws) => {
             if (games[gameId]) {
                 games[gameId].buzzed = null;
                 games[gameId].buzzerLocked = true;
+
+                games[gameId].timerVersion = (games[gameId].timerVersion || 0) + 1;
 
                 // Notify all players to reset the buzzer
                 broadcast(gameId, {type: 'reset-buzzer'});
@@ -349,7 +333,7 @@ wss.on('connection', (ws) => {
 
                 // Determine all clues based on boardData
                 if (game.boardData) {
-                    const {firstBoard, secondBoard, finalJeopardy} = game.boardData;
+                    const {firstBoard, finalJeopardy} = game.boardData;
                     const clearCluesFromBoard = (board) => {
                         board.forEach(category => {
                             category.values.forEach(clue => {
@@ -390,7 +374,6 @@ wss.on('connection', (ws) => {
             const {gameId, clue} = data;
 
             if (games[gameId]) {
-                const clueId = `${clue.value}-${clue.question}`;
                 games[gameId].selectedClue = {
                     ...clue,
                     isAnswerRevealed: false, // Add if the answer is revealed or not
@@ -415,7 +398,7 @@ wss.on('connection', (ws) => {
         }
 
         if (data.type === 'join-game') {
-            const { gameId, playerName } = data;
+            const { gameId, playerName, respond } = data;
             if (!playerName || !playerName.trim()) {
                 ws.send(JSON.stringify({ type: 'error', message: 'Player name cannot be blank.' }));
                 return;
@@ -552,7 +535,39 @@ wss.on('connection', (ws) => {
 
             if (games[gameId]) {
                 games[gameId].buzzerLocked = false; // Unlock the buzzer
+
+                games[gameId].timerVersion = (games[gameId].timerVersion || 0) + 1;
+                const currentVersion = games[gameId].timerVersion;
+
                 broadcast(gameId, {type: 'buzzer-unlocked'}); // Notify all players
+
+                // Only start timer if timeToBuzz is not -1 (infinite time)
+                if (games[gameId].timeToBuzz !== -1) {
+                    // Store the end time (current time + duration)
+                    const endTime = Date.now() + (games[gameId].timeToBuzz * 1000);
+                    games[gameId].timerEndTime = endTime;
+
+                    // Broadcast initial timer state to all players
+                    broadcast(gameId, {
+                        type: 'timer-start',
+                        endTime: endTime,
+                        duration: games[gameId].timeToBuzz,
+                        timerVersion: currentVersion
+                    });
+
+                    setTimeout(() => {
+                        // Only lock the buzzer if it hasn't been locked already
+                        if (games[gameId] && !games[gameId].buzzerLocked &&
+                            games[gameId].timerVersion === currentVersion
+                            && !games[gameId].buzzed) {
+                            games[gameId].buzzerLocked = true;
+                            games[gameId].timerEndTime = null; // Clear the timer end time
+                            broadcast(gameId, {type: 'buzzer-locked'});
+                            broadcast(gameId, {type: 'timer-end'});
+                            broadcast(gameId, {type: 'answer-revealed'});
+                        }
+                    }, games[gameId].timeToBuzz * 1000);
+                }
             }
         }
 

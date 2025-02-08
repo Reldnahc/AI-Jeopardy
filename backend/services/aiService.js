@@ -73,7 +73,7 @@ async function createCategoryOfTheDay() {
     return data;
 }
 
-async function createBoardData(categories, model, host) {
+async function createBoardData(categories, model, host, temperature) {
     console.log("Beginning to create board data with categories: " + categories);
 
     if (!categories || categories.length !== 11) {
@@ -141,9 +141,9 @@ async function createBoardData(categories, model, host) {
                 break;
         }
 
-        const firstBoardPromise = apiCall(model, prompt(firstCategories), 0.1);
-        const secondBoardPromise = apiCall(model, prompt(secondCategories, true), 0.1);
-        const finalBoardPromise = apiCall(model, finalPrompt(finalCategory), 0.1);
+        const firstBoardPromise = apiCall(model, prompt(firstCategories), temperature);
+        const secondBoardPromise = apiCall(model, prompt(secondCategories, true), temperature);
+        const finalBoardPromise = apiCall(model, finalPrompt(finalCategory), temperature);
 
         const [firstResponse, secondResponse, finalResponse] = await Promise.all([firstBoardPromise, secondBoardPromise, finalBoardPromise]);
 

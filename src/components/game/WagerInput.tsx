@@ -54,7 +54,7 @@ const WagerInput: React.FC<WagerInputProps> = ({
                                                 )
                                             }
                                             disabled={wagerSubmitted.includes(player.name)}
-                                            className="w-[100px] p-1 mr-2 border border-gray-300 rounded"
+                                            className="w-[100px] p-1 mr-2 border text-black border-gray-300 rounded"
                                         />
                                         {!wagerSubmitted.includes(player.name) ? (
                                             <button

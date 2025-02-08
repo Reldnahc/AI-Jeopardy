@@ -22,6 +22,8 @@ export default function Game() {
     const [selectedClue, setSelectedClue] = useState<Clue | null>(null);
     const [clearedClues, setClearedClues] = useState<Set<string>>(new Set());
     const [buzzerLocked, setBuzzerLocked] = useState(true);
+    const [showAnswer, setShowAnswer] = useState(false);
+    const [timerVersion, setTimerVersion] = useState<number | null>(null);
     const [activeBoard, setActiveBoard] = useState('firstBoard');
     const [scores, setScores] = useState<Record<string, number>>({});
     const [buzzLockedOut, setBuzzLockedOut] = useState(false);//early buzz
@@ -30,6 +32,8 @@ export default function Game() {
     const [isFinalJeopardy, setIsFinalJeopardy] = useState(false);
     const [drawings, setDrawings] = useState<Record<string, DrawingPath[]> | null>(null);
     const [wagers, setWagers] = useState<Record<string, number>>({});
+    const [timerEndTime, setTimerEndTime] = useState<number | null>(null);
+    const [timerDuration, setTimerDuration] = useState<number>(-1); // default value
     const [isGameOver, setIsGameOver] = useState(false); // New state to track if Final Jeopardy is finished
     const [boardData, setBoardData] = useState(location.state?.boardData || {
         firstBoard: {},
@@ -116,10 +120,8 @@ export default function Game() {
 
                 if (message.type === 'buzz-result') {
                     setBuzzResult(message.playerName);
-                }
-
-                if (message.type === 'reset-buzzer') {
-                    setBuzzResult(null);
+                    setTimerEndTime(null);
+                    setTimerDuration(0);
                 }
 
                 if (message.type === 'buzzer-locked') {
@@ -153,6 +155,18 @@ export default function Game() {
                     }
                 }
 
+                if (message.type === 'timer-start') {
+                    const { endTime, duration, timerVersion } = message;
+                    setTimerVersion(timerVersion); // Set active timer version
+                    setTimerEndTime(endTime);
+                    setTimerDuration(duration);
+                }
+
+                if (message.type === 'timer-end' && message.timerVersion === timerVersion) {
+                    setTimerEndTime(null);
+                    setTimerDuration(0);
+                }
+
                 if (message.type === 'answer-revealed') {
                     setSelectedClue((prevClue) => {
                         if (prevClue) {
@@ -160,6 +174,9 @@ export default function Game() {
                         }
                         return prevClue;
                     });
+                    setShowAnswer(true);
+                    setTimerEndTime(null);
+                    setTimerDuration(0);
                 }
 
                 if (message.type === 'all-clues-cleared') {
@@ -178,6 +195,8 @@ export default function Game() {
                 if (message.type === 'returned-to-board') {
                     setSelectedClue(null); // Reset the selected clue
                     setBuzzResult(null);
+                    setTimerEndTime(null);
+                    setTimerDuration(0);
                 }
 
                 if (message.type === 'transition-to-second-board') {
@@ -392,6 +411,10 @@ export default function Game() {
                             buzzerLocked={buzzerLocked}
                             buzzResult={buzzResult}
                             buzzLockedOut={buzzLockedOut}
+                            timerEndTime={timerEndTime}
+                            timerDuration={timerDuration}
+                            showAnswer={showAnswer}
+                            setShowAnswer={setShowAnswer}
                         />
                     </>
                 )}

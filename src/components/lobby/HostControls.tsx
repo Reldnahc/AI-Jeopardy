@@ -1,4 +1,3 @@
-import React from 'react';
 import { models } from '../../data/models.ts';
 import { useProfile } from "../../contexts/ProfileContext.tsx";
 
@@ -11,11 +10,17 @@ interface Model {
 
 interface HostControlsProps {
     selectedModel: string;
+    temperature: number;
+    timeToBuzz: number;
+    timeToAnswer: number;
     onModelChange: (e: React.ChangeEvent<HTMLSelectElement>) => void;
+    setTemperature: (temp: number) => void;
+    setTimeToBuzz: (time: number) => void;
+    setTimeToAnswer: (time: number) => void;
     onCreateGame: () => void;
 }
 
-const HostControls: React.FC<HostControlsProps> = ({ selectedModel, onModelChange, onCreateGame }) => {
+const HostControls: React.FC<HostControlsProps> = ({ selectedModel, temperature, timeToBuzz, timeToAnswer, onModelChange, setTemperature, setTimeToBuzz, setTimeToAnswer, onCreateGame }) => {
     const { profile } = useProfile();
 
     // Group the models by price
@@ -39,15 +44,28 @@ const HostControls: React.FC<HostControlsProps> = ({ selectedModel, onModelChang
         return true;
     }
 
+    const handleTimeChange = (
+        e: React.ChangeEvent<HTMLInputElement>,
+        updateTime: (time: number) => void
+    ) => {
+        const value = parseInt(e.target.value);
+        if (isNaN(value)) return;
+
+        // Clamp value between 5 and 60
+        const clampedValue = Math.min(Math.max(value, 5), 60);
+        updateTime(clampedValue);
+    };
+
+
     return (
         // Wrapper container with responsive layout
-        <div className="flex flex-col sm:flex-row justify-start mt-8 items-center pl-8 gap-5">
+        <div className="flex flex-col sm:flex-row justify-start mt-3 items-center pl-8 gap-5">
 
             {/* Options Box */}
             <div className="flex flex-col justify-center sm:mr-5">
                 <div className="flex flex-col justify-center items-start bg-gray-50 px-20 py-5 rounded-lg border border-gray-300 shadow-md flex-shrink-0">
                     {/* Dropdown for model selection */}
-                    <div className="flex flex-col gap-2">
+                    <div className="flex flex-col gap-2 mb-3">
                         <label className="text-gray-800 text-lg">Model Selection:</label>
                         <select
                             value={selectedModel}
@@ -72,6 +90,85 @@ const HostControls: React.FC<HostControlsProps> = ({ selectedModel, onModelChang
                             ))}
                         </select>
                     </div>
+                    {/* Temperature Slider */}
+                    <div className="flex flex-col gap-2 w-full mb-3">
+                        <label className="text-gray-800 text-lg">
+                            Temperature: {temperature.toFixed(2)}
+                        </label>
+                        <input
+                            type="range"
+                            min="0"
+                            max="1.2"
+                            step="0.1"
+                            value={temperature}
+                            onChange={(e) => setTemperature(parseFloat(e.target.value))}
+                            className="w-full h-2 bg-gray-200 rounded-lg appearance-none cursor-pointer"
+                        />
+                    </div>
+
+                    <div className="flex flex-col gap-2 w-full">
+                        <label className="text-gray-800 text-lg">Time to Buzz:</label>
+                        <div className="flex gap-2 items-center">
+                            <input
+                                type="number"
+                                min="5"
+                                max="60"
+                                value={timeToBuzz === -1 ? '' : timeToBuzz}
+                                onChange={(e) => handleTimeChange(e, setTimeToBuzz)}
+                                disabled={timeToBuzz === -1}
+                                placeholder="5-60"
+                                className={`p-2 rounded border border-gray-300 text-black w-24 ${
+                                    timeToBuzz === -1 ? 'bg-gray-100' : 'bg-white'
+                                }`}
+                            />
+                            <span className="text-gray-600">seconds</span>
+
+                            <div className="flex items-center ml-2">
+                                <input
+                                    type="checkbox"
+                                    id="infiniteTime"
+                                    checked={timeToBuzz === -1}
+                                    onChange={() => setTimeToBuzz(timeToBuzz === -1 ? 30 : -1)}
+                                    className="w-4 h-4 text-blue-600 bg-gray-100 border-gray-300 rounded focus:ring-blue-500"
+                                />
+                                <label htmlFor="infiniteTime" className="ml-2 text-gray-700">
+                                    Infinite Time
+                                </label>
+                            </div>
+                        </div>
+                    </div>
+                    <div className="flex flex-col gap-2 w-full">
+                        <label className="text-gray-800 text-lg">Time to Answer:</label>
+                        <div className="flex gap-2 items-center">
+                            <input
+                                type="number"
+                                min="5"
+                                max="60"
+                                value={timeToAnswer === -1 ? '' : timeToAnswer}
+                                onChange={(e) => handleTimeChange(e, setTimeToAnswer)}
+                                disabled={timeToAnswer === -1}
+                                placeholder="5-60"
+                                className={`p-2 rounded border border-gray-300 text-black w-24 ${
+                                    timeToAnswer === -1 ? 'bg-gray-100' : 'bg-white'
+                                }`}
+                            />
+                            <span className="text-gray-600">seconds</span>
+
+                            <div className="flex items-center ml-2">
+                                <input
+                                    type="checkbox"
+                                    id="infiniteTime2"
+                                    checked={timeToAnswer === -1}
+                                    onChange={() => setTimeToAnswer(timeToAnswer === -1 ? 30 : -1)}
+                                    className="w-4 h-4 text-blue-600 bg-gray-100 border-gray-300 rounded focus:ring-blue-500"
+                                />
+                                <label htmlFor="infiniteTime2" className="ml-2 text-gray-700">
+                                    Infinite Time
+                                </label>
+                            </div>
+                        </div>
+                    </div>
+
                 </div>
             </div>
 

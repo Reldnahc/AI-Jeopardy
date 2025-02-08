@@ -27,15 +27,20 @@ interface JeopardyBoardProps {
     buzzerLocked: boolean;
     buzzResult: string | null;
     buzzLockedOut: boolean;
+    timerEndTime: number | null;
+    timerDuration: number;
+    showAnswer: boolean;
+    setShowAnswer: React.Dispatch<React.SetStateAction<boolean>>;
+
 }
 
 const JeopardyBoard: React.FC<JeopardyBoardProps> =
     ({ boardData, isHost, onClueSelected, selectedClue, gameId, clearedClues, players, scores,
          currentPlayer, allWagersSubmitted, isFinalJeopardy, drawings, setBuzzerLocked,
-         setBuzzResult, handleBuzz, buzzerLocked, buzzResult, buzzLockedOut }) => {
+         setBuzzResult, handleBuzz, buzzerLocked, buzzResult, buzzLockedOut, timerEndTime, timerDuration,
+         showAnswer, setShowAnswer }) => {
     const [localSelectedClue, setLocalSelectedClue] = useState<Clue | null>(null);
     const [showClue, setShowClue] = useState(false);
-    const [showAnswer, setShowAnswer] = useState(false);
     const [hostCanSeeAnswer, setHostCanSeeAnswer] = useState(false);
     const [wagers, setWagers] = useState<Record<string, number>>({});
     const [wagerSubmitted, setWagerSubmitted] = useState<string[]>([]);
@@ -191,6 +196,8 @@ const JeopardyBoard: React.FC<JeopardyBoardProps> =
                         buzzerLocked={buzzerLocked}
                         buzzResult={buzzResult}
                         buzzLockedOut={buzzLockedOut}
+                        timerEndTime={timerEndTime}
+                        timerDuration={timerDuration}
                     />
                 )}
             </div>
