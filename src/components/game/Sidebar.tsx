@@ -2,6 +2,7 @@ import React from "react";
 import {useProfile} from "../../contexts/ProfileContext.tsx";
 import Avatar from "../common/Avatar.tsx";
 import {Player} from "../../types/Lobby.ts";
+import {useNavigate} from "react-router-dom";
 
 interface SidebarProps {
     isHost: boolean;
@@ -28,19 +29,23 @@ const Sidebar: React.FC<SidebarProps> = ({
                                          }) => {
 
     const { profile } = useProfile();
+    const navigate = useNavigate();
 
     return (
         <div className="flex-none w-full md:w-72 flex flex-col items-start gap-5 p-5 overflow-hidden box-border relative">
             <div className="flex flex-col gap-0 p-1 w-full" style={{ fontFamily: "'Poppins', sans-serif" }}>
                 <div>
+                    <button className="mx-auto w-full text-center text-2xl font-bold text-blue-700 hover:text-blue-500"
+                            onClick={() => navigate('/')}>
+                        AI-Jeopardy.com
+                    </button>
                     <h2 className="text-2xl mt-3 font-extrabold bg-gradient-to-r from-[#1e88e5] via-[#3d5afe] to-[#5c6bc0] text-white px-5 py-5 rounded-lg text-center flex items-center gap-2.5 shadow-md mb-3">
                         Players
                     </h2>
                     <ul className="list-none p-0 m-0">
-                        {players.map((player, index) => (
-                            <>
+                        {players.map((player) => (
                                 <li
-                                key={index}
+                                key={player.name}
                                 className={`flex items-center p-2.5 rounded-lg mb-2 text-base shadow-sm text-blue-500 ${
                                     host === player.name
                                         ? "bg-yellow-200 border-yellow-500 border-2"
@@ -88,7 +93,6 @@ const Sidebar: React.FC<SidebarProps> = ({
                                     </div>
                                 )}
                             </li>
-                            </>
                         ))}
                     </ul>
                 </div>

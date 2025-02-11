@@ -1,3 +1,4 @@
+import { Link } from "react-router-dom";
 import { Board } from "../../types/Board.ts";
 import CollapsibleCategory from "./CollapsibleCategory.tsx";
 
@@ -7,11 +8,19 @@ type GameCardProps = {
 
 const GameCard = ({ game }: GameCardProps) => {
     return (
-        <div className="bg-white border border-gray-200 shadow-md rounded-lg p-6 mb-8">
+        <div className="bg-gray-50 border border-gray-200 shadow-md rounded-lg p-6 mb-8">
             <div className="mb-4 border-b pb-2">
+                {/* Host with Link */}
                 <p className="text-xl font-semibold text-gray-800">
-                    Host: <span className="font-normal">{game.host}</span>
+                    Host:{" "}
+                    <Link
+                        to={`/profile/${game.host.toLowerCase()}`} // Navigate to host's profile
+                        className="text-blue-600 hover:underline font-normal transition"
+                    >
+                        {game.host}
+                    </Link>
                 </p>
+                {/* Model */}
                 <p className="text-xl font-semibold text-gray-800">
                     Model: <span className="font-normal">{game.model}</span>
                 </p>

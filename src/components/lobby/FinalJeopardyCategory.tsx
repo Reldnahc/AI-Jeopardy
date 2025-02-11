@@ -28,7 +28,7 @@ const FinalJeopardyCategory: React.FC<FinalJeopardyCategoryProps> = ({
     return (
         <div>
             <h2 className="text-3xl -mt-3 text-black font-bold">Final Jeopardy!</h2>
-            <div className="flex items-center gap-2.5 flex-1 mt-3">
+            <div className="flex items-center gap-2.5 flex-1 mt-3 ">
                 <input
                     type="text"
                     value={category}
@@ -37,7 +37,7 @@ const FinalJeopardyCategory: React.FC<FinalJeopardyCategoryProps> = ({
                         onChangeCategory('finalJeopardy', undefined, e.target.value)
                     }
                     placeholder="Enter Final Jeopardy Category"
-                    className="text-[1.2rem] p-[10px] rounded border border-gray-300 text-black bg-gray-50 flex-[4]"
+                    className="text-[1.2rem] p-[10px] rounded border text-black bg-gray-50 border-gray-300 flex-1 min-w-0"
                 />
                 {isHost && (
                     <div>

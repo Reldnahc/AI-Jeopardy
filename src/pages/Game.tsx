@@ -24,7 +24,7 @@ export default function Game() {
     const [buzzerLocked, setBuzzerLocked] = useState(true);
     const [showAnswer, setShowAnswer] = useState(false);
     const [timerVersion, setTimerVersion] = useState<number | null>(null);
-    const [activeBoard, setActiveBoard] = useState('firstBoard');
+    const [activeBoard, setActiveBoard] = useState<'firstBoard' | 'secondBoard' | 'finalJeopardy'>('firstBoard');
     const [scores, setScores] = useState<Record<string, number>>({});
     const [buzzLockedOut, setBuzzLockedOut] = useState(false);//early buzz
     const [lastQuestionValue, setLastQuestionValue] = useState<number>(100);
@@ -35,10 +35,32 @@ export default function Game() {
     const [timerEndTime, setTimerEndTime] = useState<number | null>(null);
     const [timerDuration, setTimerDuration] = useState<number>(-1); // default value
     const [isGameOver, setIsGameOver] = useState(false); // New state to track if Final Jeopardy is finished
-    const [boardData, setBoardData] = useState(location.state?.boardData || {
-        firstBoard: {},
-        secondBoard: {},
-        finalJeopardy: {}
+    const [boardData, setBoardData] = useState<{
+        firstBoard: {
+            categories: Category[]; // An array of Category
+        };
+        secondBoard: {
+            categories: Category[]; // Also an array of Category
+        };
+        finalJeopardy: {
+            categories: Category[]; // Matches the types
+        };
+    }>({
+        firstBoard: {
+            categories: [
+                { category: '', values: [] }, // Example category structure
+            ],
+        },
+        secondBoard: {
+            categories: [
+                { category: '', values: [] }, // Same consistent structure
+            ],
+        },
+        finalJeopardy: {
+            categories: [
+                { category: '', values: [] }, // Same consistent structure
+            ],
+        },
     });
 
     // Persistent WebSocket connection
@@ -63,8 +85,6 @@ export default function Game() {
     });
 
     useEffect(() => {
-        document.title = 'Jeopardy! - ' + gameId;
-
         if (socket && isSocketReady) {
 
             socket.onmessage = (event) => {
@@ -74,7 +94,8 @@ export default function Game() {
                     setPlayers(message.players);
                     setHost(message.host);
                     setBuzzResult(message.buzzResult ? message.buzzResult : null);
-                    setBoardData(message.boardData || null); // Set the board data dynamically
+                    console.log(message.boardData);
+                    setBoardData(message.boardData); // Set the board data dynamically
                     setScores(message.scores || {}); // Initialize scores
 
                     if (message.clearedClues) {
@@ -115,7 +136,7 @@ export default function Game() {
                         return 0;
                     });
                     setPlayers(sortedPlayers);
-                    setHost(message.host); // Add a separate state for the host
+                    setHost(message.host);
                 }
 
                 if (message.type === 'buzz-result') {
@@ -214,6 +235,12 @@ export default function Game() {
                     console.log("All players have submitted their drawings.");
                 }
             };
+            socket.send(
+                JSON.stringify({
+                    type: 'request-player-list',
+                    gameId,
+                })
+            );
         }
     }, [gameId, playerName, isHost, isSocketReady]);
 
@@ -229,7 +256,7 @@ export default function Game() {
         }
 
         if (
-            activeBoard === 'firstBoard' &&
+            activeBoard === 'firstBoard' && boardData.firstBoard.categories[0].category !== '' &&
             boardData.firstBoard.categories.every((category: Category) =>
                 category.values.every((clue) => clearedClues.has(`${clue.value}-${clue.question}`))
             )
@@ -246,7 +273,7 @@ export default function Game() {
 
             }
         } else if (
-            activeBoard === 'secondBoard' &&
+            activeBoard === 'secondBoard' && boardData.firstBoard.categories[0].category !== '' &&
             boardData.secondBoard.categories.every((category: Category) =>
                 category.values.every((clue) => clearedClues.has(`${clue.value}-${clue.question}`))
             )
@@ -263,7 +290,7 @@ export default function Game() {
             }
 
         }
-    }, [clearedClues, gameId, activeBoard, isSocketReady]); // Run only when clearedClues or gameId changes
+    }, [clearedClues, gameId, activeBoard, isSocketReady]);
 
     const updateClearedClues = (newClearedClues: string[]) => {
         setClearedClues((prev) => {
@@ -357,7 +384,7 @@ export default function Game() {
 
     return (
         <div
-            className="flex h-[calc(100vh-5.5rem)] w-screen overflow-hidden font-sans bg-gradient-to-r from-indigo-400 to-blue-700"
+            className="flex h-screen w-screen overflow-hidden font-sans bg-gradient-to-r from-indigo-400 to-blue-700"
         >
             {/* Sidebar */}
             {deviceType === 'mobile' ? (

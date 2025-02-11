@@ -4,7 +4,6 @@ import { Player } from "../../types/Lobby.ts";
 
 interface LobbySidebarProps {
     gameId: string | undefined;
-    isHost: boolean;
     host: string | null;
     players: Player[];
     copySuccess: boolean;
@@ -13,7 +12,6 @@ interface LobbySidebarProps {
 
 const LobbySidebar: React.FC<LobbySidebarProps> = ({
                                                        gameId,
-                                                       isHost,
                                                        host,
                                                        players,
                                                        copySuccess,
@@ -37,11 +35,8 @@ const LobbySidebar: React.FC<LobbySidebarProps> = ({
                 <p className="text-lg font-bold m-0">
                     <strong>Lobby ID:</strong> {gameId}
                 </p>
-                <p className="text-base m-0">
-                    <strong>Host:</strong>{" "}
-                    <span className={`font-bold ${isHost ? "text-yellow-300" : "text-white"}`}>
-                        {isHost ? "You" : host || "Unknown"}
-                    </span>
+                <p className="text-sm text-center mt-2 -mb-3">
+                    (click to copy)
                 </p>
             </div>
 

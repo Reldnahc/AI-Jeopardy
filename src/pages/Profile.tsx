@@ -7,6 +7,7 @@ import Avatar from "../components/common/Avatar.tsx";
 import {useAuth} from "../contexts/AuthContext.tsx";
 import {useUserProfile} from "../contexts/UserProfileContext.tsx"; // Import the `Board` type
 import { motion } from 'framer-motion';
+import LoadingScreen from "../components/common/LoadingScreen.tsx";
 
 // Define the expected shape of the profile data from Supabase
 interface ProfileData {
@@ -139,9 +140,7 @@ const Profile: React.FC = () => {
 
     if (loading) {
         return (
-            <div className="flex items-center justify-center h-screen bg-gradient-to-r from-indigo-400 to-blue-700">
-                <p className="text-xl">Loading...</p>
-            </div>
+            <LoadingScreen message = "Loading profile" />
         );
     }
 

@@ -36,6 +36,7 @@ const Lobby: React.FC = () => {
     const isHost = location.state?.isHost || false;
     const { gameId } = useParams<{ gameId: string }>();
     const [isLoading, setIsLoading] = useState(false);
+    const [allowLeave, setAllowLeave] = useState(false);
     const [loadingMessage, setLoadingMessage] = useState('');
     const [temperature, setTemperature] = useState(0.1);
     const [timeToBuzz, setTimeToBuzz] = useState(10);
@@ -67,10 +68,31 @@ const Lobby: React.FC = () => {
     };
 
     const { setIsLeavingPage } = useNavigationBlocker({
-        shouldBlock: !isLoading,
+        shouldBlock: !allowLeave,
         onLeave: handleLeaveLobby,
         confirmMessage: 'Are you sure you want to leave? This will remove you from the current lobby.'
     });
+
+    useEffect(() => {
+        if (allowLeave && socket && isSocketReady && profile && profile.displayname) {
+            socket.send(
+                JSON.stringify({
+                    type: 'join-game',
+                    gameId,
+                    playerName: profile?.displayname,
+                })
+            );
+
+            navigate(`/game/${gameId}`, {
+                state: {
+                    playerName: profile?.displayname.trim(),
+                    isHost: isHost,
+                    host: host,
+                },
+            });
+        }
+    }, [allowLeave]);
+
 
     useEffect(() => {
         if (socket && isSocketReady) {
@@ -134,25 +156,29 @@ const Lobby: React.FC = () => {
                     setLoadingMessage('Generating your questions');
                 }
 
+                if (message.type === 'create-board-failed') {
+                    setIsLoading(false);
+                    showAlert(
+                        <span>
+                            <span className="text-red-500 font-bold text-xl">Game generation failed.</span><br/>
+                            <span
+                                className="text-gray-900 font-bold text-xl">Try again. If the issue persists try another model.</span><br/>
+                        </span>,
+                        [
+                            {
+                                label: "Okay",
+                                actionValue: "continue",
+                                styleClass: "bg-green-500 text-white hover:bg-green-600",
+                            },
+
+                        ]
+                    );
+                }
+
                 if (message.type === 'start-game' && profile) {
                     setIsLoading(false);
-                    setIsLeavingPage(true); // Set this before navigation
-                    navigate(`/game/${gameId}`, {
-                        state: {
-                            playerName: profile.displayname.trim(),
-                            isHost: isHost,
-                            host: host,
-                            boardData: message.boardData,
-                        },
-                    });
-                    socket.send(
-                        JSON.stringify({
-                            type: 'join-game',
-                            gameId,
-                            playerName: profile.displayname,
-                            respond: true,
-                        })
-                    );
+                    setIsLeavingPage(true);
+                    setAllowLeave(true);
                 }
 
                 if (message.type === 'check-lobby-response') {
@@ -380,7 +406,6 @@ const Lobby: React.FC = () => {
                     <div className="lg:col-span-1 border-r border-gray-200 bg-gray-50 p-6">
                         <LobbySidebar
                             gameId={gameId}
-                            isHost={isHost}
                             host={host}
                             players={players}
                             copySuccess={copySuccess}

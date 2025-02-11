@@ -2,6 +2,7 @@ import React, { useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { Player } from "../../types/Lobby.ts";
 import Avatar from "../common/Avatar.tsx";
+import {useNavigate} from "react-router-dom";
 
 interface MobileSidebarProps {
     isHost: boolean;
@@ -23,6 +24,7 @@ const MobileSidebar: React.FC<MobileSidebarProps> = ({
                                                          buzzResult,
                                                      }) => {
     const [isOpen, setIsOpen] = useState(false);
+    const navigate = useNavigate();
 
     return (
         <>
@@ -51,6 +53,10 @@ const MobileSidebar: React.FC<MobileSidebarProps> = ({
                         className="fixed top-0 left-0 h-full w-full max-w-52 bg-gradient-to-r from-indigo-400 to-blue-700 shadow-xl z-40 overflow-y-auto"
                     >
                         <div className="flex flex-col gap-1 p-1 w-full text-sm">
+                            <button className="mx-auto w-full text-center text-2xl font-bold text-blue-700 hover:text-blue-500"
+                                    onClick={() => navigate('/')}>
+                                AI-Jeopardy.com
+                            </button>
                             {/* Players List */}
                             <div className="mt-1">
                                 <h2 className="text-base font-bold text-white bg-black/20 p-2 rounded-lg mb-1">

@@ -190,9 +190,11 @@ wss.on('connection', (ws) => {
 
             console.log(boardData);
 
-            if (!games[gameId]) {
-                //error handle
-                console.log("error moving from lobby to game. game reference not found.");
+            if (!games[gameId] || !boardData) {
+                console.log("error starting game: " + gameId + " board data failed to create");
+                broadcast(gameId, {
+                    type: 'create-board-failed',
+                });
             } else if (games[gameId].inLobby) {
                 games[gameId].buzzed = null;
                 games[gameId].buzzerLocked = true;
@@ -202,11 +204,10 @@ wss.on('connection', (ws) => {
                 games[gameId].inLobby = false;
                 games[gameId].timeToBuzz = timeToBuzz;
                 games[gameId].timeToAnswer = timeToAnswer;
-
+                //todo suspect I subtract tokens here
                 console.log(games[gameId].players);
                 broadcast(gameId, {
                     type: 'start-game',
-                    boardData: boardData,
                     host: host,
 
                 });
@@ -398,7 +399,7 @@ wss.on('connection', (ws) => {
         }
 
         if (data.type === 'join-game') {
-            const { gameId, playerName, respond } = data;
+            const { gameId, playerName } = data;
             if (!playerName || !playerName.trim()) {
                 ws.send(JSON.stringify({ type: 'error', message: 'Player name cannot be blank.' }));
                 return;
@@ -448,6 +449,20 @@ wss.on('connection', (ws) => {
                 })),
                 host: games[gameId].host,
             });
+        }
+
+        if (data.type === 'request-player-list') {
+            const { gameId } = data;
+            ws.send(JSON.stringify({
+                type: 'player-list-update',
+                gameId,
+                players: games[gameId].players.map((p) => ({
+                    name: p.name,
+                    color: p.color,
+                    text_color: p.text_color,
+                })),
+                host: games[gameId].host,
+            }));
         }
 
         if (data.type === 'leave-game') {

@@ -4,7 +4,6 @@ import { createHashRouter, RouterProvider} from 'react-router-dom';
 import MainPage from './pages/MainPage.tsx';
 import Game from './pages/Game';
 import Lobby from './pages/Lobby';
-import Header from './components/common/Header.tsx';
 import './index.css'; // Include this in the main entry point
 import {WebSocketProvider} from "./contexts/WebSocketContext.tsx";
 import { AuthProvider } from './contexts/AuthContext.tsx';
@@ -15,13 +14,7 @@ import {UserProfileProvider} from "./contexts/UserProfileContext.tsx";
 import {AlertProvider} from "./contexts/AlertContext.tsx";
 import {DeviceProvider} from "./contexts/DeviceContext.tsx";
 import NotFoundPage from "./pages/NotFoundPage.tsx";
-// Create a Layout component that includes the Header
-const Layout = ({ children }: { children: React.ReactNode }) => (
-    <>
-        <Header />
-        {children}
-    </>
-);
+import Layout from "./components/common/Layout.tsx";
 
 // Define the router configuration
 const router = createHashRouter([
@@ -35,7 +28,7 @@ const router = createHashRouter([
     },
     {
         path: "/game/:gameId",
-        element: <Layout><Game /></Layout>
+        element: <Game/>
     },
     {
         path: "/profile/:username",

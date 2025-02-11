@@ -5,7 +5,9 @@ import randomCategoryList from "../data/randomCategories.ts";
 import {useAuth} from "../contexts/AuthContext.tsx";
 import {useProfile} from "../contexts/ProfileContext.tsx";
 import {useAlert} from "../contexts/AlertContext.tsx";
-import { motion } from 'framer-motion'; // Optional: used for smooth entrance animations
+import { motion } from 'framer-motion';
+import PlayerSearch from "../components/main/PlayerSearch.tsx";
+
 export default function MainPage() {
     const [gameId, setGameId] = useState('');
     const [cotd, setCotd] = useState({
@@ -294,7 +296,11 @@ export default function MainPage() {
                                 </div>
                             </div>
                         </div>
-
+                        <div className="mt-8">
+                            <div className="p-6 bg-gray-50 rounded-lg border border-gray-200 shadow-sm">
+                                <PlayerSearch/>
+                            </div>
+                        </div>
                         {/* How to Play Section */}
                         <div className="mt-8">
                             <details className="bg-gray-50 p-6 rounded-lg border border-gray-200 shadow" open>
